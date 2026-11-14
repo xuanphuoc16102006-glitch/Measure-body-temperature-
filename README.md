@@ -1,8 +1,8 @@
-# Hệ Thống Đo Thân Nhiệt Không Tiếp Xúc & Giám Sát Từ Xa (BLE – Cloud Web)
+# Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến (BLE – Cloud Web)
 
-Hệ thống kết hợp đo nhiệt độ hồng ngoại không tiếp xúc (**MLX90614**), phân loại và cảnh báo kết quả bằng đèn LED/còi, hiển thị thông tin trên màn hình **OLED**, tự động kích hoạt đo bằng cảm biến khoảng cách (**VL53L0X**), điều khiển bơm sát khuẩn tự động và truyền dữ liệu thời gian thực qua **Bluetooth Low Energy (HM-10)** lên **Web Dashboard (GitHub Pages + Firebase Cloud)** để giám sát tại chỗ và từ xa.
+Hệ thống kết hợp đo nhiệt độ hồng ngoại không tiếp xúc (**MLX90614**), phân loại và cảnh báo kết quả bằng đèn LED/còi, hiển thị thông tin trên màn hình **OLED**, tự động kích hoạt đo bằng cảm biến khoảng cách (**VL53L0X**), điều khiển bơm sát khuẩn tự động và truyền dữ liệu thời gian thực qua **Bluetooth Low Energy (HM-10)** lên **Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến (GitHub Pages + Firebase Cloud)** để giám sát tại chỗ và từ xa.
 
-🌐 **Link Web Dashboard trực tuyến:** [https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/](https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/)
+🌐 **Link Web giám sát trực tuyến:** [https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/](https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/)
 
 ---
 
@@ -48,11 +48,11 @@ Cảm biến VL53L0X hỗ trợ kích hoạt đo tự động khi phát hiện �
 
 Cảm biến hồng ngoại **E18-D80NK** phát hiện tay đưa vào. Khi tay được phát hiện ổn định, chương trình bật bơm trong khoảng **1,5 giây**, sau đó chờ **2,5 giây** trước chu kỳ kế tiếp. Người dùng phải rút tay ra trước khi hệ thống chấp nhận lần kích hoạt mới. Phần điều khiển này được triển khai trong `sanitizer.cpp`.
 
-## 7. Giao tiếp Bluetooth BLE & Giám sát Web Dashboard
+## 7. Giao tiếp Bluetooth BLE & Giám sát Web trực tuyến
 
 Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết bị gửi nhiệt độ, nhiệt độ môi trường, trạng thái kết quả đo và trạng thái bộ phận sát khuẩn ra bên ngoài, đồng thời hỗ trợ các lệnh xem ngưỡng hiện tại, thay đổi ngưỡng và cập nhật hệ số hiệu chuẩn trực tiếp vào EEPROM.
 
-**Kiến trúc truyền dữ liệu lên Web Dashboard:**
+**Kiến trúc truyền dữ liệu lên hệ thống Web:**
 
 ```text
 [Cảm biến MLX90614 + VL53L0X + E18-D80NK]
@@ -64,7 +64,7 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
           [Module BLE HM-10 (0xFFE0)]
                     │ (Web Bluetooth API)
                     ▼
-   [Trạm thu phát Web (ThermoSync Dashboard)] ◄── [Định danh: Quick Chips / Nhập tên / Quét QR Webcam]
+   [Trạm thu phát Web (Hệ Thống Đo & Giám Sát)] ◄── [Định danh: Chọn nhanh / Nhập tên / Quét QR]
                     │ (HTTPS REST API - history.json)
                     ▼
       [Firebase Realtime Database (Cloud)]
@@ -73,13 +73,13 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
     [Thiết bị giám sát từ xa (Điện thoại / PC)]
 ```
 
-- **Kết nối tại chỗ (Web Bluetooth API):** Mở Web Dashboard bằng trình duyệt **Google Chrome** hoặc **Microsoft Edge** trên máy tính có Bluetooth → bấm **🔗 Kết nối HM-10** để nhận dữ liệu trực tiếp qua giao thức GATT (`Service 0xFFE0`, `Characteristic 0xFFE1`) mà không cần cài App trung gian.
+- **Kết nối tại chỗ (Web Bluetooth API):** Mở trang Web bằng trình duyệt **Google Chrome** hoặc **Microsoft Edge** trên máy tính có Bluetooth → bấm **🔗 Kết nối HM-10** để nhận dữ liệu trực tiếp qua giao thức GATT (`Service 0xFFE0`, `Characteristic 0xFFE1`) mà không cần cài App trung gian.
 
 ## 8. Định danh sinh viên / người đo trên Web
 
-Trước khi thực hiện phép đo, hệ thống cho phép gán danh tính người đo theo 3 cách trực tiếp trên **ThermoSync Dashboard**:
+Trước khi thực hiện phép đo, hệ thống cho phép gán danh tính người đo theo 3 cách trực tiếp trên giao diện Web:
 
-- **Chọn nhanh 1 chạm (Quick Chips) & Danh sách thả xuống:** Tích hợp sẵn danh sách thành viên nhóm (**Xuân Phước**, **Minh Nhân**, **Gia Phúc**, **Khách vãng lai**) để chọn nhanh chỉ với một lần bấm.
+- **Chọn nhanh 1 chạm & Danh sách thả xuống:** Tích hợp sẵn danh sách thành viên nhóm (**Xuân Phước**, **Minh Nhân**, **Gia Phúc**, **Khách vãng lai**) để chọn nhanh chỉ với một lần bấm.
 - **Thêm & Lưu danh bạ tùy chỉnh:** Cho phép nhập mới họ tên hoặc MSSV và lưu trực tiếp vào bộ nhớ trình duyệt (`localStorage`) để sử dụng cho các lần sau.
 - **Tùy chỉnh ngưỡng cảnh báo sốt động:** Cho phép thay đổi trực tiếp ngưỡng cảnh báo sốt ngay trên giao diện Web để phân loại trạng thái theo thời gian thực.
 
@@ -112,6 +112,6 @@ Trước khi thực hiện phép đo, hệ thống cho phép gán danh tính ng�
 ```text
 Measure-body-temperature-/
 ├── doan_da_sua/          # Mã nguồn firmware C/C++ (config.h, indicators.cpp, sanitizer.cpp, ...)
-├── index.html            # Giao diện Web Dashboard tích hợp Web Bluetooth API, QR Scanner & Firebase Cloud
+├── index.html            # Giao diện Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến (BLE + QR + Cloud)
 └── README.md             # Tài liệu mô tả chức năng, sơ đồ chân và hướng dẫn vận hành
 ```
