@@ -74,6 +74,7 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
 ```
 
 - **Kết nối tại chỗ (Web Bluetooth API):** Mở trang Web bằng trình duyệt **Google Chrome** hoặc **Microsoft Edge** trên máy tính có Bluetooth → bấm **🔗 Kết nối HM-10** để nhận dữ liệu trực tiếp qua giao thức GATT (`Service 0xFFE0`, `Characteristic 0xFFE1`) mà không cần cài App trung gian.
+- **Giao diện hiện đại & Tiện ích trực quan:** Hỗ trợ **Giao diện Sáng / Tối (Light / Dark Mode)**, **Đa ngôn ngữ Việt – Anh (`VI / EN`)**, **Đồng hồ điện tử thời gian thực** trên thanh điều hướng, cùng **Còi báo động âm thanh (Web Audio API)** và hiệu ứng nháy viền đỏ trên Web ngay khi phát hiện ca sốt vượt ngưỡng (kèm nút **🔔 Thử còi**).
 
 ## 8. Quản lý định danh sinh viên / người đo trên Web
 
