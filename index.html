@@ -28,13 +28,27 @@
       background-attachment: fixed;
       color: var(--text-main);
       margin: 0;
-      padding: 28px 16px;
+      padding: 24px 16px;
       min-height: 100vh;
       display: flex;
       justify-content: center;
     }
     .container { max-width: 920px; width: 100%; }
-    .header { text-align: center; margin-bottom: 28px; }
+    .top-bar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+    .lang-switch {
+      display: inline-flex; background: rgba(255, 255, 255, 0.9);
+      padding: 4px; border-radius: 99px; border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    }
+    .lang-btn {
+      padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 800;
+      background: transparent; color: #64748b; cursor: pointer; border: none;
+    }
+    .lang-btn.active {
+      background: var(--primary-gradient); color: #ffffff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+    .header { text-align: center; margin-bottom: 26px; }
     .header-pill {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 16px; border-radius: 99px;
@@ -172,10 +186,16 @@
 </head>
 <body>
 <div class="container">
+  <div class="top-bar">
+    <div class="lang-switch">
+      <button id="btnLangVi" class="lang-btn active" onclick="setLanguage('vi')">🇻🇳 Tiếng Việt</button>
+      <button id="btnLangEn" class="lang-btn" onclick="setLanguage('en')">🇬🇧 English</button>
+    </div>
+  </div>
   <div class="header">
-    <div class="header-pill">✨ Trạm Kiểm Soát Y Tế Thông Minh</div>
-    <h1>HỆ THỐNG ĐO VÀ GIÁM SÁT THÂN NHIỆT TRỰC TUYẾN</h1>
-    <p>ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Đồng bộ Đám mây</p>
+    <div id="uiPill" class="header-pill">✨ Trạm Kiểm Soát Y Tế Thông Minh</div>
+    <h1 id="uiTitle">HỆ THỐNG ĐO VÀ GIÁM SÁT THÂN NHIỆT TRỰC TUYẾN</h1>
+    <p id="uiSubtitle">ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Đồng bộ Đám mây</p>
   </div>
   <div class="bento-grid">
     <div class="card">
@@ -188,33 +208,31 @@
         <span class="status-badge status-cloud"><span class="dot"></span><span id="syncTime">Đang kết nối Đám mây...</span></span>
       </div>
       <div class="temp-box">
-        <div class="current-person-chip">👤 Đang đo: <span id="currentPersonLabel">Xuân Phước</span></div>
+        <div class="current-person-chip">👤 <span id="uiMeasuringLabel">Đang đo:</span> <span id="currentPersonLabel">Xuân Phước</span></div>
         <div id="tempValue" class="temp-display">--.- °C</div>
         <div id="alertText" class="alert-text" style="color: var(--text-sub);">Sẵn sàng nhận dữ liệu đo...</div>
       </div>
       <div class="threshold-box">
-        <span>🔥 Ngưỡng cảnh báo sốt:</span>
+        <span id="uiThresholdLabel">🔥 Ngưỡng cảnh báo sốt:</span>
         <input type="number" id="feverThreshold" value="38.0" step="0.1">
         <span>°C</span>
       </div>
     </div>
     <div class="card">
       <div class="section-title-row">
-        <h3 class="section-title">🎓 Định danh sinh viên</h3>
-        <button class="btn-reset-list" onclick="resetDefaultPeople()" title="Khôi phục danh sách mặc định">🔄 Khôi phục mặc định</button>
+        <h3 id="uiIdTitle" class="section-title">🎓 Định danh sinh viên</h3>
+        <button id="btnResetDefault" class="btn-reset-list" onclick="resetDefaultPeople()" title="Khôi phục danh sách mặc định">🔄 Khôi phục mặc định</button>
       </div>
-      <p class="section-sub">Chọn nhanh tên bên dưới (bấm ✕ để xóa), nhập mới hoặc quét mã QR</p>
+      <p id="uiIdSub" class="section-sub">Chọn nhanh tên bên dưới (bấm ✕ để xóa), nhập mới hoặc quét mã QR</p>
       <div id="chipContainer" class="chip-container"></div>
       <div class="form-group">
         <div class="input-row">
-          <select id="personSelect" onchange="selectPersonFromList()">
-            <option value="Khách vãng lai">-- Chọn từ danh sách sinh viên --</option>
-          </select>
-          <button class="btn-clear" style="padding: 10px 13px; white-space: nowrap;" onclick="deleteSelectedPerson()" title="Xóa sinh viên đang chọn">🗑️ Xóa tên</button>
+          <select id="personSelect" onchange="selectPersonFromList()"></select>
+          <button id="btnDeleteSelected" class="btn-clear" style="padding: 10px 13px; white-space: nowrap;" onclick="deleteSelectedPerson()">🗑️ Xóa tên</button>
         </div>
         <div class="input-row">
           <input type="text" id="personInput" placeholder="Nhập thêm tên / MSSV..." oninput="updateCurrentPerson(this.value, false)">
-          <button class="btn-add" onclick="savePersonToList()">+ Lưu</button>
+          <button id="btnAddPerson" class="btn-add" onclick="savePersonToList()">+ Lưu</button>
         </div>
         <button id="btnQR" class="btn-qr" style="justify-content: center; width: 100%;" onclick="toggleQRScanner()">📷 Bật Camera quét mã QR</button>
       </div>
@@ -223,10 +241,10 @@
   </div>
   <div class="card">
     <div class="table-header">
-      <div><h3 class="section-title" style="margin: 0;">📊 Nhật ký đo đồng bộ trực tuyến</h3></div>
+      <div><h3 id="uiHistoryTitle" class="section-title" style="margin: 0;">📊 Nhật ký đo đồng bộ trực tuyến</h3></div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="btn-export" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
-        <button class="btn-clear" onclick="clearHistory()">🗑️ Xóa tất cả</button>
+        <button id="btnExport" class="btn-export" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
+        <button id="btnClearAll" class="btn-clear" onclick="clearHistory()">🗑️ Xóa tất cả</button>
       </div>
     </div>
     <div class="filter-bar">
@@ -235,13 +253,20 @@
         <input type="text" id="searchInput" placeholder="Tìm nhanh theo tên sinh viên, MSSV hoặc thời gian..." oninput="renderTable()">
       </div>
       <button id="btnFilterFever" class="btn-filter-fever" onclick="toggleFeverFilter()">
-        🔥 Chỉ hiện ca sốt (<span id="feverCountBadge">0</span>)
+        <span id="uiFilterFeverText">🔥 Chỉ hiện ca sốt</span> (<span id="feverCountBadge">0</span>)
       </button>
     </div>
     <div class="table-wrapper">
       <table>
         <thead>
-          <tr><th>STT</th><th>Thời gian</th><th>Sinh viên / Người đo</th><th>Nhiệt độ</th><th>Trạng thái</th><th>Xóa</th></tr>
+          <tr>
+            <th id="thNo">STT</th>
+            <th id="thTime">Thời gian</th>
+            <th id="thPerson">Sinh viên / Người đo</th>
+            <th id="thTemp">Nhiệt độ</th>
+            <th id="thStatus">Trạng thái</th>
+            <th id="thDel">Xóa</th>
+          </tr>
         </thead>
         <tbody id="historyBody">
           <tr><td colspan="6" style="color: #94a3b8; padding: 24px;">Đang tải nhật ký từ Đám mây...</td></tr>
@@ -253,11 +278,177 @@
 <script>
   const FIREBASE_DB_URL = "https://measure-body-temperature-default-rtdb.asia-southeast1.firebasedatabase.app/";
   const STORAGE_KEY = "ble_students_v3";
+  const LANG_KEY = "ble_ui_lang_v1";
+
+  const i18n = {
+    vi: {
+      docTitle: "Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến",
+      pill: "✨ Trạm Kiểm Soát Y Tế Thông Minh",
+      title: "HỆ THỐNG ĐO VÀ GIÁM SÁT THÂN NHIỆT TRỰC TUYẾN",
+      subtitle: "ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Đồng bộ Đám mây",
+      btnConnect: "🔗 Kết nối HM-10",
+      btnDisconnect: "❌ Ngắt kết nối",
+      modeRemote: "Chế độ: Xem từ xa (Cloud)",
+      modeHost: "Trạm phát: Đã nối ",
+      cloudConnecting: "Đang kết nối Đám mây...",
+      cloudSyncedAt: "Đồng bộ lúc: ",
+      cloudPushedAt: "Đã đồng bộ Đám mây: ",
+      cloudReadyZero: "Đám mây sẵn sàng (0 bản ghi)",
+      cloudLost: "Mất kết nối Đám mây",
+      cloudCleared: "Đã xóa nhật ký Đám mây",
+      measuringLabel: "Đang đo:",
+      readyText: "Sẵn sàng nhận dữ liệu đo...",
+      alertFever: "🚨 CẢNH BÁO: THÂN NHIỆT VƯỢT NGƯỠNG!",
+      alertNormal: "✅ Thân nhiệt bình thường",
+      thresholdLabel: "🔥 Ngưỡng cảnh báo sốt:",
+      idTitle: "🎓 Định danh sinh viên",
+      btnResetDefault: "🔄 Khôi phục mặc định",
+      idSub: "Chọn nhanh tên bên dưới (bấm ✕ để xóa), nhập mới hoặc quét mã QR",
+      selectDefaultOpt: "-- Chọn từ danh sách sinh viên --",
+      guestName: "Khách vãng lai",
+      btnDeleteSelected: "🗑️ Xóa tên",
+      personInputPlaceholder: "Nhập thêm tên / MSSV...",
+      btnAddPerson: "+ Lưu",
+      btnQRStart: "📷 Bật Camera quét mã QR",
+      btnQRStop: "⏹️ Đóng Camera QR",
+      historyTitle: "📊 Nhật ký đo đồng bộ trực tuyến",
+      btnExport: "📥 Xuất Excel (CSV)",
+      btnClearAll: "🗑️ Xóa tất cả",
+      searchPlaceholder: "Tìm nhanh theo tên sinh viên, MSSV hoặc thời gian...",
+      filterFeverText: "🔥 Chỉ hiện ca sốt",
+      thNo: "STT",
+      thTime: "Thời gian",
+      thPerson: "Sinh viên / Người đo",
+      thTemp: "Nhiệt độ",
+      thStatus: "Trạng thái",
+      thDel: "Xóa",
+      emptyTable: "Chưa có dữ liệu đo nào được ghi nhận",
+      noMatchTable: "Không tìm thấy bản ghi nào khớp với bộ lọc hiện tại",
+      tagFever: "🔥 Sốt cao",
+      tagNormal: "✨ Bình thường",
+      delRowTitle: "Xóa lượt đo này",
+      alertEnterName: "Vui lòng nhập tên sinh viên trước khi bấm Lưu!",
+      alertSelectToDelete: "Vui lòng chọn một tên sinh viên cần xóa trong danh sách thả xuống!",
+      alertNoExport: "Chưa có dữ liệu để xuất!",
+      csvHeader: "\uFEFFSTT,Thoi gian,Sinh vien / Nguoi do,Nhiet do (C),Trang thai\n",
+      csvFever: "Sot cao",
+      csvNormal: "Binh thuong"
+    },
+    en: {
+      docTitle: "Online Body Temperature Measurement & Monitoring System",
+      pill: "✨ Smart Health Screening Station",
+      title: "ONLINE BODY TEMPERATURE MEASUREMENT & MONITORING",
+      subtitle: "ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Cloud Sync",
+      btnConnect: "🔗 Connect HM-10",
+      btnDisconnect: "❌ Disconnect",
+      modeRemote: "Mode: Remote Viewer (Cloud)",
+      modeHost: "Host Station: Connected ",
+      cloudConnecting: "Connecting to Cloud...",
+      cloudSyncedAt: "Synced at: ",
+      cloudPushedAt: "Pushed to Cloud: ",
+      cloudReadyZero: "Cloud ready (0 records)",
+      cloudLost: "Cloud connection lost",
+      cloudCleared: "Cloud history cleared",
+      measuringLabel: "Measuring:",
+      readyText: "Ready to receive temperature data...",
+      alertFever: "🚨 ALERT: HIGH TEMPERATURE DETECTED!",
+      alertNormal: "✅ Normal body temperature",
+      thresholdLabel: "🔥 Fever threshold:",
+      idTitle: "🎓 Student Identification",
+      btnResetDefault: "🔄 Reset default",
+      idSub: "Quick-select below (click ✕ to remove), add new or scan QR code",
+      selectDefaultOpt: "-- Select from student list --",
+      guestName: "Guest",
+      btnDeleteSelected: "🗑️ Remove",
+      personInputPlaceholder: "Enter name / Student ID...",
+      btnAddPerson: "+ Save",
+      btnQRStart: "📷 Open Camera to Scan QR",
+      btnQRStop: "⏹️ Close QR Camera",
+      historyTitle: "📊 Real-Time Synced Measurement Logs",
+      btnExport: "📥 Export Excel (CSV)",
+      btnClearAll: "🗑️ Clear All",
+      searchPlaceholder: "Quick search by student name, ID or time...",
+      filterFeverText: "🔥 Fever cases only",
+      thNo: "No.",
+      thTime: "Time",
+      thPerson: "Student / Person",
+      thTemp: "Temp",
+      thStatus: "Status",
+      thDel: "Del",
+      emptyTable: "No measurement records found yet",
+      noMatchTable: "No records match the current search/filter",
+      tagFever: "🔥 High Fever",
+      tagNormal: "✨ Normal",
+      delRowTitle: "Delete this record",
+      alertEnterName: "Please enter a student name before saving!",
+      alertSelectToDelete: "Please select a student name from the dropdown list to remove!",
+      alertNoExport: "No data available to export!",
+      csvHeader: "\uFEFFNo.,Time,Student / Person,Temperature (C),Status\n",
+      csvFever: "High Fever",
+      csvNormal: "Normal"
+    }
+  };
+
+  let currentLang = localStorage.getItem(LANG_KEY) || "vi";
   let bleDevice = null, bleCharacteristic = null, receiveBuffer = "", historyData = [], isHostStation = false, lastCloudSignature = "";
   let currentPerson = "Xuân Phước", html5QrcodeScanner = null, isScanningQR = false;
-  let filterFeverOnly = false;
+  let filterFeverOnly = false, lastDisplayedTemp = null;
   const SERVICE_UUID = 0xFFE0, CHAR_UUID = 0xFFE1;
   const defaultStudents = ["Xuân Phước", "Minh Nhân", "Gia Phúc", "Khách vãng lai"];
+
+  function t(key) { return i18n[currentLang][key] || key; }
+
+  function formatDisplayName(name) {
+    if (name === "Khách vãng lai" || name === "Guest") return t("guestName");
+    return name;
+  }
+
+  function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem(LANG_KEY, lang);
+    document.documentElement.lang = lang;
+    document.title = t("docTitle");
+
+    document.getElementById("btnLangVi").classList.toggle("active", lang === "vi");
+    document.getElementById("btnLangEn").classList.toggle("active", lang === "en");
+
+    document.getElementById("uiPill").innerText = t("pill");
+    document.getElementById("uiTitle").innerText = t("title");
+    document.getElementById("uiSubtitle").innerText = t("subtitle");
+    document.getElementById("btnConnect").innerText = t("btnConnect");
+    document.getElementById("btnDisconnect").innerText = t("btnDisconnect");
+    document.getElementById("statusText").innerText = isHostStation ? (t("modeHost") + (bleDevice?.name || "HM-10")) : t("modeRemote");
+    document.getElementById("uiMeasuringLabel").innerText = t("measuringLabel");
+    document.getElementById("uiThresholdLabel").innerText = t("thresholdLabel");
+    document.getElementById("uiIdTitle").innerText = t("idTitle");
+    document.getElementById("btnResetDefault").innerText = t("btnResetDefault");
+    document.getElementById("uiIdSub").innerText = t("idSub");
+    document.getElementById("btnDeleteSelected").innerText = t("btnDeleteSelected");
+    document.getElementById("personInput").placeholder = t("personInputPlaceholder");
+    document.getElementById("btnAddPerson").innerText = t("btnAddPerson");
+    document.getElementById("btnQR").innerText = isScanningQR ? t("btnQRStop") : t("btnQRStart");
+    document.getElementById("uiHistoryTitle").innerText = t("historyTitle");
+    document.getElementById("btnExport").innerText = t("btnExport");
+    document.getElementById("btnClearAll").innerText = t("btnClearAll");
+    document.getElementById("searchInput").placeholder = t("searchPlaceholder");
+    document.getElementById("uiFilterFeverText").innerText = t("filterFeverText");
+
+    document.getElementById("thNo").innerText = t("thNo");
+    document.getElementById("thTime").innerText = t("thTime");
+    document.getElementById("thPerson").innerText = t("thPerson");
+    document.getElementById("thTemp").innerText = t("thTemp");
+    document.getElementById("thStatus").innerText = t("thStatus");
+    document.getElementById("thDel").innerText = t("thDel");
+
+    if (lastDisplayedTemp !== null) {
+      updateMainDisplay(lastDisplayedTemp);
+    } else {
+      document.getElementById("alertText").innerText = t("readyText");
+    }
+
+    loadPeopleList();
+    renderTable();
+  }
 
   function loadPeopleList() {
     let saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -267,13 +458,14 @@
     }
     if (!saved.includes("Khách vãng lai")) saved.push("Khách vãng lai");
     if (!saved.includes(currentPerson)) currentPerson = saved[0] || "Khách vãng lai";
-    document.getElementById("currentPersonLabel").innerText = currentPerson;
+    document.getElementById("currentPersonLabel").innerText = formatDisplayName(currentPerson);
 
     const select = document.getElementById("personSelect");
-    select.innerHTML = '<option value="Khách vãng lai">-- Chọn từ danh sách sinh viên --</option>';
+    select.innerHTML = `<option value="Khách vãng lai">${t("selectDefaultOpt")}</option>`;
     saved.forEach(name => {
       const opt = document.createElement("option");
-      opt.value = name; opt.textContent = name;
+      opt.value = name;
+      opt.textContent = formatDisplayName(name);
       select.appendChild(opt);
     });
 
@@ -284,14 +476,13 @@
       chip.className = "student-chip" + (name === currentPerson ? " active" : "");
 
       const nameSpan = document.createElement("span");
-      nameSpan.innerText = name;
+      nameSpan.innerText = formatDisplayName(name);
       chip.appendChild(nameSpan);
 
       if (name !== "Khách vãng lai") {
         const delBtn = document.createElement("span");
         delBtn.className = "chip-del";
         delBtn.innerText = "✕";
-        delBtn.title = "Xóa " + name + " khỏi danh sách";
         delBtn.onclick = (e) => {
           e.stopPropagation();
           removePersonByName(name);
@@ -310,22 +501,18 @@
   }
 
   function removePersonByName(name) {
-    if (name === "Khách vãng lai") return alert("Mục 'Khách vãng lai' là mặc định, không thể xóa!");
+    if (name === "Khách vãng lai") return;
     let saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [...defaultStudents];
     saved = saved.filter(item => item !== name);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    if (currentPerson === name) {
-      currentPerson = saved[0] || "Khách vãng lai";
-    }
+    if (currentPerson === name) currentPerson = saved[0] || "Khách vãng lai";
     document.getElementById("personInput").value = "";
     loadPeopleList();
   }
 
   function deleteSelectedPerson() {
     const val = document.getElementById("personSelect").value;
-    if (!val || val === "Khách vãng lai") {
-      return alert("Vui lòng chọn một tên sinh viên cần xóa trong danh sách thả xuống!");
-    }
+    if (!val || val === "Khách vãng lai") return alert(t("alertSelectToDelete"));
     removePersonByName(val);
   }
 
@@ -344,18 +531,18 @@
 
   function updateCurrentPerson(val, refreshChips = true) {
     currentPerson = val.trim() || "Khách vãng lai";
-    document.getElementById("currentPersonLabel").innerText = currentPerson;
+    document.getElementById("currentPersonLabel").innerText = formatDisplayName(currentPerson);
     if (refreshChips) {
       document.querySelectorAll(".student-chip").forEach(c => {
         const chipName = c.querySelector("span").innerText;
-        c.classList.toggle("active", chipName === currentPerson);
+        c.classList.toggle("active", chipName === formatDisplayName(currentPerson));
       });
     }
   }
 
   function savePersonToList() {
     const val = document.getElementById("personInput").value.trim();
-    if (!val) return alert("Vui lòng nhập tên sinh viên trước khi bấm Lưu!");
+    if (!val) return alert(t("alertEnterName"));
     let saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     if (!saved.includes(val)) {
       saved.unshift(val);
@@ -369,13 +556,13 @@
   function toggleQRScanner() {
     const qrDiv = document.getElementById("qr-reader"), btnQR = document.getElementById("btnQR");
     if (!isScanningQR) {
-      qrDiv.style.display = "block"; btnQR.innerText = "⏹️ Đóng Camera QR"; isScanningQR = true;
+      qrDiv.style.display = "block"; btnQR.innerText = t("btnQRStop"); isScanningQR = true;
       html5QrcodeScanner = new Html5Qrcode("qr-reader");
       html5QrcodeScanner.start({ facingMode: "user" }, { fps: 10, qrbox: { width: 200, height: 200 } },
         (decodedText) => {
           const text = decodedText.trim();
           if (text.startsWith("http://") || text.startsWith("https://")) {
-            alert("Mã QR này đang chứa đường link web (" + text + "). Hãy tạo mã QR dạng Văn bản thuần (Static Text) chứa tên sinh viên!");
+            alert("QR contains URL (" + text + "). Please use a Static Text QR code!");
             return;
           }
           document.getElementById("personInput").value = text;
@@ -383,9 +570,9 @@
           playBeep();
         },
         () => {}
-      ).catch(err => { alert("Không thể mở Camera: " + err); qrDiv.style.display = "none"; btnQR.innerText = "📷 Bật Camera quét mã QR"; isScanningQR = false; });
+      ).catch(err => { alert("Camera error: " + err); qrDiv.style.display = "none"; btnQR.innerText = t("btnQRStart"); isScanningQR = false; });
     } else if (html5QrcodeScanner) {
-      html5QrcodeScanner.stop().then(() => { qrDiv.style.display = "none"; btnQR.innerText = "📷 Bật Camera quét mã QR"; isScanningQR = false; });
+      html5QrcodeScanner.stop().then(() => { qrDiv.style.display = "none"; btnQR.innerText = t("btnQRStart"); isScanningQR = false; });
     }
   }
 
@@ -402,18 +589,18 @@
       await bleCharacteristic.startNotifications();
       bleCharacteristic.addEventListener('characteristicvaluechanged', handleBLEData);
       isHostStation = true;
-      document.getElementById('statusText').innerText = "Trạm phát: Đã nối " + (bleDevice.name || "HM-10");
+      document.getElementById('statusText').innerText = t("modeHost") + (bleDevice.name || "HM-10");
       document.getElementById('statusBadge').classList.add('status-connected');
       document.getElementById('btnConnect').style.display = 'none';
       document.getElementById('btnDisconnect').style.display = 'inline-flex';
-    } catch (error) { alert("Lỗi kết nối BLE: " + error.message); }
+    } catch (error) { alert("BLE Error: " + error.message); }
   }
 
   function disconnectBLE() { if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); }
 
   function onDisconnected() {
     isHostStation = false;
-    document.getElementById('statusText').innerText = "Chế độ: Xem từ xa (Cloud)";
+    document.getElementById('statusText').innerText = t("modeRemote");
     document.getElementById('statusBadge').classList.remove('status-connected');
     document.getElementById('btnConnect').style.display = 'inline-flex';
     document.getElementById('btnDisconnect').style.display = 'none';
@@ -449,9 +636,9 @@
         });
         lastCloudSignature = JSON.stringify(historyData[0]) + "_" + historyData.length;
       }
-      document.getElementById('syncTime').innerText = "Đã đồng bộ Đám mây: " + new Date().toLocaleTimeString('vi-VN');
+      document.getElementById('syncTime').innerText = t("cloudPushedAt") + new Date().toLocaleTimeString('vi-VN');
     } catch (e) {
-      document.getElementById('syncTime').innerText = "Lỗi đẩy Đám mây!";
+      document.getElementById('syncTime').innerText = t("cloudLost");
     }
   }
 
@@ -460,7 +647,7 @@
     const isFever = temp >= threshold;
     const timeStr = new Date(timestamp).toLocaleTimeString('vi-VN');
 
-    updateMainDisplay(temp, personName);
+    updateMainDisplay(temp);
     historyData.unshift({ time: timeStr, person: personName, temp: temp.toFixed(1), isFever: isFever, timestamp: timestamp });
     if (historyData.length > 50) historyData.pop();
     renderTable();
@@ -471,10 +658,7 @@
     if (isHostStation) return;
     try {
       const res = await fetch(`${FIREBASE_DB_URL}history.json`);
-      if (!res.ok) {
-        document.getElementById('syncTime').innerText = "Lỗi quyền Firebase (" + res.status + ")";
-        return;
-      }
+      if (!res.ok) return;
       const cloudList = await res.json();
       if (Array.isArray(cloudList) && cloudList.length > 0) {
         const latestSig = JSON.stringify(cloudList[0]) + "_" + cloudList.length;
@@ -483,32 +667,33 @@
           historyData = cloudList;
           const newest = historyData[0];
           updateCurrentPerson(newest.person || "Khách vãng lai", true);
-          updateMainDisplay(parseFloat(newest.temp), newest.person);
+          updateMainDisplay(parseFloat(newest.temp));
           renderTable();
         }
-        document.getElementById('syncTime').innerText = "Đồng bộ lúc: " + new Date().toLocaleTimeString('vi-VN');
+        document.getElementById('syncTime').innerText = t("cloudSyncedAt") + new Date().toLocaleTimeString('vi-VN');
       } else {
         historyData = [];
         lastCloudSignature = "";
-        document.getElementById('syncTime').innerText = "Đám mây sẵn sàng (0 bản ghi)";
+        document.getElementById('syncTime').innerText = t("cloudReadyZero");
         renderTable();
       }
     } catch (e) {
-      document.getElementById('syncTime').innerText = "Mất kết nối Đám mây";
+      document.getElementById('syncTime').innerText = t("cloudLost");
     }
   }
 
-  function updateMainDisplay(temp, personName) {
+  function updateMainDisplay(temp) {
+    lastDisplayedTemp = temp;
     const threshold = parseFloat(document.getElementById('feverThreshold').value) || 38.0;
     const isFever = temp >= threshold;
     const tempEl = document.getElementById('tempValue'), alertEl = document.getElementById('alertText');
     tempEl.innerText = temp.toFixed(1) + " °C";
     if (isFever) {
       tempEl.style.color = "var(--fever)"; alertEl.style.color = "var(--fever)";
-      alertEl.innerText = "🚨 CẢNH BÁO: THÂN NHIỆT VƯỢT NGƯỠNG!";
+      alertEl.innerText = t("alertFever");
     } else {
       tempEl.style.color = "var(--normal)"; alertEl.style.color = "var(--normal)";
-      alertEl.innerText = "✅ Thân nhiệt bình thường";
+      alertEl.innerText = t("alertNormal");
     }
   }
 
@@ -530,7 +715,7 @@
     document.getElementById('feverCountBadge').innerText = totalFever;
 
     if (historyData.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; padding: 24px;">Chưa có dữ liệu đo nào được ghi nhận</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="6" style="color: #94a3b8; padding: 24px;">${t("emptyTable")}</td></tr>`;
       return;
     }
 
@@ -538,13 +723,14 @@
     const filtered = historyData
       .map((item, idx) => ({ ...item, originalIndex: idx, stt: historyData.length - idx }))
       .filter(item => {
-        const matchSearch = !query || item.person.toLowerCase().includes(query) || item.time.toLowerCase().includes(query);
+        const displayPerson = formatDisplayName(item.person).toLowerCase();
+        const matchSearch = !query || displayPerson.includes(query) || item.person.toLowerCase().includes(query) || item.time.toLowerCase().includes(query);
         const matchFever = !filterFeverOnly || item.isFever;
         return matchSearch && matchFever;
       });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="color: #94a3b8; padding: 24px;">Không tìm thấy bản ghi nào khớp với bộ lọc hiện tại</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="6" style="color: #94a3b8; padding: 24px;">${t("noMatchTable")}</td></tr>`;
       return;
     }
 
@@ -552,10 +738,10 @@
       <tr>
         <td>#${item.stt}</td>
         <td>${item.time}</td>
-        <td style="color: #4338ca; font-weight: 700;">${item.person}</td>
+        <td style="color: #4338ca; font-weight: 700;">${formatDisplayName(item.person)}</td>
         <td style="font-size: 15px; font-weight: 800;">${item.temp} °C</td>
-        <td>${item.isFever ? '<span class="tag-fever">🔥 Sốt cao</span>' : '<span class="tag-ok">✨ Bình thường</span>'}</td>
-        <td><button class="btn-row-del" onclick="deleteHistoryRow(${item.originalIndex})" title="Xóa lượt đo này">✕</button></td>
+        <td>${item.isFever ? `<span class="tag-fever">${t("tagFever")}</span>` : `<span class="tag-ok">${t("tagNormal")}</span>`}</td>
+        <td><button class="btn-row-del" onclick="deleteHistoryRow(${item.originalIndex})" title="${t("delRowTitle")}">✕</button></td>
       </tr>
     `).join('');
   }
@@ -565,21 +751,21 @@
     renderTable();
     try {
       await fetch(`${FIREBASE_DB_URL}history.json`, { method: "DELETE" });
-      document.getElementById('syncTime').innerText = "Đã xóa nhật ký Đám mây";
+      document.getElementById('syncTime').innerText = t("cloudCleared");
     } catch (e) {}
   }
 
   function exportCSV() {
-    if (historyData.length === 0) return alert("Chưa có dữ liệu để xuất!");
-    let csvContent = "\uFEFFSTT,Thoi gian,Sinh vien / Nguoi do,Nhiet do (C),Trang thai\n";
+    if (historyData.length === 0) return alert(t("alertNoExport"));
+    let csvContent = t("csvHeader");
     historyData.forEach((item, index) => {
-      csvContent += `${historyData.length - index},${item.time},"${item.person}",${item.temp},${item.isFever ? "Sot cao" : "Binh thuong"}\n`;
+      csvContent += `${historyData.length - index},${item.time},"${formatDisplayName(item.person)}",${item.temp},${item.isFever ? t("csvFever") : t("csvNormal")}\n`;
     });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), link = document.createElement("a");
-    link.href = URL.createObjectURL(blob); link.download = "Nhat_ky_do_than_nhiet.csv"; link.click();
+    link.href = URL.createObjectURL(blob); link.download = currentLang === "en" ? "Temperature_Logs.csv" : "Nhat_ky_do_than_nhiet.csv"; link.click();
   }
 
-  loadPeopleList();
+  setLanguage(currentLang);
   syncFromCloud();
   setInterval(syncFromCloud, 1500);
 </script>
