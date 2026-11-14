@@ -73,3 +73,31 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
                     │ (Đồng bộ tự động 1.5s)
                     ▼
     [Thiết bị giám sát từ xa (Điện thoại / PC)]
+```
+
+- **Kết nối tại chỗ (Không cần cài App):** Mở Web Dashboard bằng trình duyệt **Google Chrome** hoặc **Microsoft Edge** trên máy tính có Bluetooth → bấm **🔗 Kết nối Trạm đo (HM-10)** để nhận dữ liệu trực tiếp qua **Web Bluetooth API** và tự động đẩy lên **Firebase Realtime Database**.
+- **Giám sát từ xa (Qua Internet 4G/Wi-Fi):** Mở link Web trên bất kỳ điện thoại hoặc máy tính nào ở xa (không cần bật Bluetooth); giao diện tự động cập nhật số liệu mới nhất từ Firebase mỗi **1,5 giây**, cảnh báo sốt trực quan và hỗ trợ **xuất bảng lịch sử đo ra file Excel (`.csv`)**.
+
+## 8. Chân kết nối chính
+
+| Chức năng | Chân Arduino |
+| :--- | :---: |
+| Nút FUNCTION | D8 |
+| Nút RESET | D9 |
+| Còi | D10 / PB2 |
+| LED đỏ | D11 / PB3 |
+| LED xanh | D12 / PB4 |
+| Cảm biến phát hiện tay | D4 |
+| Cảm biến mức dung dịch | D5, hiện chưa bật |
+| Điều khiển bơm | D6 |
+| Giao tiếp BLE | D0, D1 |
+| I2C cho MLX90614, OLED và VL53L0X | A4 (SDA), A5 (SCL) |
+
+## 9. Cấu trúc thư mục dự án
+
+```text
+Measure-body-temperature-/
+├── doan_da_sua/          # Mã nguồn firmware C/C++ (config.h, indicators.cpp, sanitizer.cpp, ...)
+├── index.html            # Giao diện Web Dashboard tích hợp Web Bluetooth API & Firebase Cloud
+└── README.md             # Tài liệu mô tả chức năng, sơ đồ chân và hướng dẫn vận hành
+```
