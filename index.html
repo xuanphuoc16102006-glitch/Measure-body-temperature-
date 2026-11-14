@@ -336,6 +336,9 @@
   </style>
 </head>
 <body>
+<!-- File MP3 đặt cùng thư mục với index.html trên GitHub: hongkong1999.mp3 -->
+<audio id="hk1999Audio" src="hongkong1999.mp3" loop preload="auto"></audio>
+
 <div class="container">
   <div class="top-bar">
     <div class="cute-clock">
@@ -347,7 +350,7 @@
     <div class="top-controls">
       <button id="btnMusic" class="music-btn" onclick="toggleBgMusic()">
         <span class="eq-bars"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>
-        <span id="musicLabel">🎵 Nhạc: Chạm để bật</span>
+        <span id="musicLabel">📼 Hồng Kông 1999</span>
       </button>
       <div class="pill-switch">
         <button id="btnThemeLight" class="switch-btn active" onclick="setTheme('light')">☀️ Sáng</button>
@@ -459,9 +462,9 @@
       docTitle: "Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến",
       themeLight: "☀️ Sáng",
       themeDark: "🌙 Tối",
-      musicOn: "🎵 Nhạc: Đang phát",
-      musicOff: "🔇 Nhạc: Tắt",
-      musicWait: "🎵 Nhạc: Bật",
+      musicOn: "📼 Hồng Kông 1999: Đang phát",
+      musicOff: "🔇 Hồng Kông 1999: Tắt",
+      musicWait: "📼 Hồng Kông 1999",
       pill: "✨ Trạm Kiểm Soát Y Tế Thông Minh 🩺",
       title: "HỆ THỐNG ĐO VÀ GIÁM SÁT THÂN NHIỆT TRỰC TUYẾN",
       subtitle: "ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Đồng bộ Đám mây ☁️",
@@ -517,9 +520,9 @@
       docTitle: "Online Body Temperature Measurement & Monitoring System",
       themeLight: "☀️ Light",
       themeDark: "🌙 Dark",
-      musicOn: "🎵 Chill: On",
-      musicOff: "🔇 Chill: Off",
-      musicWait: "🎵 Chill: Play",
+      musicOn: "📼 Hong Kong 1999: Playing",
+      musicOff: "🔇 Hong Kong 1999: Off",
+      musicWait: "📼 Hong Kong 1999",
       pill: "✨ Smart Health Screening Station 🩺",
       title: "ONLINE BODY TEMPERATURE MEASUREMENT & MONITORING",
       subtitle: "ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Cloud Sync ☁️",
@@ -581,65 +584,90 @@
   const SERVICE_UUID = 0xFFE0, CHAR_UUID = 0xFFE1;
   const defaultStudents = ["Xuân Phước", "Minh Nhân", "Gia Phúc", "Khách vãng lai"];
 
-  /* --- Chill Lofi Ambient Music Engine (Web Audio API) --- */
-  let audioCtx = null, musicInterval = null, isMusicPlaying = false, noteStep = 0;
+  /* --- Music Engine: "Dạo Bước Hồng Kông 1999" (MP3 + Retro 1999 Synth Fallback) --- */
+  let audioCtx = null, synthInterval = null, isMusicPlaying = false, noteStep = 0;
   let musicUserMuted = localStorage.getItem(MUSIC_PREF_KEY) === "muted";
 
-  // Soft Lo-fi Maj7 / Add9 chord arpeggio notes (Hz)
-  const chillNotes = [
-    261.63, 329.63, 392.00, 493.88, // Cmaj7
-    220.00, 261.63, 329.63, 392.00, // Am7
-    174.61, 220.00, 261.63, 329.63, // Fmaj7
-    196.00, 246.94, 293.66, 349.23  // G7
+  // Retro 1999 Hong Kong City-Pop / Cantopop minor-pentatonic synth melody (Hz)
+  const hk1999RetroNotes = [
+    329.63, 392.00, 440.00, 493.88, 587.33, 493.88, 440.00, 392.00, // Em9 nostalgia
+    261.63, 329.63, 392.00, 493.88, 523.25, 493.88, 392.00, 329.63, // Cmaj9
+    220.00, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66, // Am11
+    246.94, 329.63, 369.99, 440.00, 493.88, 440.00, 369.99, 329.63  // Bm7
   ];
 
-  function playSoftChillNote(freq) {
+  function playHkRetroNote(freq) {
     if (!audioCtx || audioCtx.state !== "running") return;
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = "sine";
+    osc.type = "triangle"; // Warm retro 90s electric piano timbre
     osc.frequency.setValueAtTime(freq, now);
 
-    // Gentle piano-like envelope (very soft volume so it never disturbs)
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.08);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.6);
+    gain.gain.exponentialRampToValueAtTime(0.04, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(now);
-    osc.stop(now + 1.65);
+    osc.stop(now + 1.15);
   }
 
-  function startChillMusic() {
-    if (isMusicPlaying) return;
+  function startRetroSynthFallback() {
+    if (synthInterval) return;
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return;
       audioCtx = new AudioContextClass();
     }
     if (audioCtx.state === "suspended") audioCtx.resume();
+    playHkRetroNote(hk1999RetroNotes[noteStep % hk1999RetroNotes.length]);
+    noteStep++;
+    synthInterval = setInterval(() => {
+      if (!isMusicPlaying) return;
+      playHkRetroNote(hk1999RetroNotes[noteStep % hk1999RetroNotes.length]);
+      noteStep++;
+    }, 520);
+  }
+
+  function stopRetroSynthFallback() {
+    if (synthInterval) {
+      clearInterval(synthInterval);
+      synthInterval = null;
+    }
+  }
+
+  function startHongKong1999Music() {
+    if (isMusicPlaying) return;
     isMusicPlaying = true;
     musicUserMuted = false;
     localStorage.setItem(MUSIC_PREF_KEY, "on");
     updateMusicButtonUI();
 
-    playSoftChillNote(chillNotes[noteStep % chillNotes.length]);
-    noteStep++;
-    musicInterval = setInterval(() => {
-      if (!isMusicPlaying) return;
-      playSoftChillNote(chillNotes[noteStep % chillNotes.length]);
-      noteStep++;
-    }, 680);
+    const audioEl = document.getElementById("hk1999Audio");
+    if (audioEl) {
+      audioEl.volume = 0.45;
+      const playPromise = audioEl.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // MP3 hongkong1999.mp3 loaded & playing!
+          stopRetroSynthFallback();
+        }).catch(() => {
+          // If hongkong1999.mp3 is not uploaded yet, play Retro 1999 Synth seamlessly
+          startRetroSynthFallback();
+        });
+      }
+    } else {
+      startRetroSynthFallback();
+    }
   }
 
-  function stopChillMusic() {
+  function stopHongKong1999Music() {
     isMusicPlaying = false;
-    if (musicInterval) {
-      clearInterval(musicInterval);
-      musicInterval = null;
-    }
+    const audioEl = document.getElementById("hk1999Audio");
+    if (audioEl) audioEl.pause();
+    stopRetroSynthFallback();
     updateMusicButtonUI();
   }
 
@@ -647,9 +675,9 @@
     if (isMusicPlaying) {
       musicUserMuted = true;
       localStorage.setItem(MUSIC_PREF_KEY, "muted");
-      stopChillMusic();
+      stopHongKong1999Music();
     } else {
-      startChillMusic();
+      startHongKong1999Music();
     }
   }
 
@@ -667,10 +695,23 @@
     }
   }
 
-  // Auto-start music on first user interaction (bypasses browser autoplay block)
+  // Try immediate autoplay on load, plus unlock on first click/tap
+  window.addEventListener("load", () => {
+    if (!musicUserMuted) {
+      const audioEl = document.getElementById("hk1999Audio");
+      if (audioEl) {
+        audioEl.volume = 0.45;
+        audioEl.play().then(() => {
+          isMusicPlaying = true;
+          updateMusicButtonUI();
+        }).catch(() => {});
+      }
+    }
+  });
+
   function unlockAndAutoPlayMusic() {
     if (!musicUserMuted && !isMusicPlaying) {
-      startChillMusic();
+      startHongKong1999Music();
     }
     document.removeEventListener("pointerdown", unlockAndAutoPlayMusic);
     document.removeEventListener("keydown", unlockAndAutoPlayMusic);
