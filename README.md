@@ -1,7 +1,14 @@
+# Hệ Thống Đo Thân Nhiệt Không Tiếp Xúc & Giám Sát Từ Xa (BLE – Cloud Web)
+
+Hệ thống kết hợp đo nhiệt độ hồng ngoại không tiếp xúc (**MLX90614**), phân loại và cảnh báo kết quả bằng đèn LED/còi, hiển thị thông tin trên màn hình **OLED**, tự động kích hoạt đo bằng cảm biến khoảng cách (**VL53L0X**), điều khiển bơm sát khuẩn tự động và truyền dữ liệu thời gian thực qua **Bluetooth Low Energy (HM-10)** lên **Web Dashboard (GitHub Pages + Firebase Cloud)** để giám sát tại chỗ và từ xa.
+
+🌐 **Link Web Dashboard trực tuyến:** [https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/](https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/)
+
+---
 
 ## 1. Chức năng tổng quát
 
-Thiết bị đo nhiệt độ bằng cảm biến hồng ngoại **MLX90614**, hiển thị kết quả trên màn hình OLED, đồng thời cảnh báo bằng đèn LED và còi khi nhiệt độ vượt ngưỡng. Thiết bị có thể bắt đầu đo bằng nút nhấn hoặc tự kích hoạt khi cảm biến khoảng cách phát hiện người đến gần. Ngoài ra, hệ thống có chức năng điều khiển bơm nước sát khuẩn tự động và truyền dữ liệu qua Bluetooth BLE.
+Thiết bị đo nhiệt độ bằng cảm biến hồng ngoại **MLX90614**, hiển thị kết quả trên màn hình OLED, đồng thời cảnh báo bằng đèn LED và còi khi nhiệt độ vượt ngưỡng. Thiết bị có thể bắt đầu đo bằng nút nhấn hoặc tự kích hoạt khi cảm biến khoảng cách phát hiện người đến gần. Ngoài ra, hệ thống có chức năng điều khiển bơm nước sát khuẩn tự động và truyền dữ liệu qua Bluetooth BLE lên giao diện Web trực tuyến.
 
 ## 2. Đo và xử lý nhiệt độ
 
@@ -43,55 +50,18 @@ Cảm biến hồng ngoại E18-D80NK phát hiện tay đưa vào. Khi tay đư�
 
 Chương trình có hỗ trợ cảm biến mức dung dịch XKC-Y25-V để khóa bơm và báo hết dung dịch. Tuy nhiên, trong cấu hình hiện tại, `WATER_LEVEL_SENSOR_PRESENT` đang đặt bằng `0`, tức là tính năng đọc cảm biến mức nước **chưa được bật**. Phần điều khiển này được triển khai trong `sanitizer.cpp`.
 
-## 7. Giao tiếp Bluetooth BLE
+## 7. Giao tiếp Bluetooth BLE & Giám sát Web Dashboard (Tại chỗ & Từ xa)
 
-Module BLE kết nối với Arduino qua UART phần cứng. Thiết bị có thể gửi nhiệt độ, nhiệt độ môi trường, trạng thái kết quả đo và trạng thái bộ phận sát khuẩn đến ứng dụng. Một số lệnh hỗ trợ gồm xem ngưỡng hiện tại, thay đổi ngưỡng và cập nhật hệ số hiệu chuẩn. Dữ liệu ngưỡng và hiệu chuẩn mới được lưu vào EEPROM.
+Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết bị gửi nhiệt độ, nhiệt độ môi trường, trạng thái kết quả đo và trạng thái bộ phận sát khuẩn ra bên ngoài, đồng thời hỗ trợ các lệnh xem ngưỡng hiện tại, thay đổi ngưỡng và cập nhật hệ số hiệu chuẩn trực tiếp vào EEPROM.
 
-## 8. Chân kết nối chính
-
-| Chức năng | Chân Arduino |
-|---|---:|
-| Nút FUNCTION | D8 |
-| Nút RESET | D9 |
-| Còi | D10 / PB2 |
-| LED đỏ | D11 / PB3 |
-| LED xanh | D12 / PB4 |
-| Cảm biến phát hiện tay | D4 |
-| Cảm biến mức dung dịch | D5, hiện chưa bật |
-| Điều khiển bơm | D6 |
-| Giao tiếp BLE | D0, D1 |
-| I2C cho MLX90614, OLED và VL53L0X | A4 (SDA), A5 (SCL) |
-
-**Tóm tắt:** Hệ thống kết hợp đo nhiệt độ không tiếp xúc, phân loại và cảnh báo kết quả, hiển thị thông tin trên OLED, kết nối BLE, tự động kích hoạt đo bằng cảm biến khoảng cách và điều khiển bơm sát khuẩn.
-# Hệ Thống Đo Thân Nhiệt Không Tiếp Xúc & Giám Sát Từ Xa (BLE – Cloud Web)
-
-Hệ thống đo thân nhiệt hồng ngoại không tiếp xúc sử dụng vi điều khiển **ATmega328P**, tích hợp tự động kích hoạt đo bằng cảm biến khoảng cách, bơm dung dịch sát khuẩn tự động và truyền dữ liệu thời gian thực qua **Bluetooth Low Energy (HM-10)** lên **Web Dashboard (GitHub Pages + Firebase Cloud)** để giám sát tại chỗ và từ xa.
-
-🌐 **Link Web Dashboard trực tuyến:** [https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/](https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/)
-
----
-
-## 1. Tính năng nổi bật
-
-* **Đo thân nhiệt không tiếp xúc độ chính xác cao:** Sử dụng cảm biến hồng ngoại **MLX90614**, lọc nhiễu đa mẫu và bù sai số hiệu chuẩn lưu trong EEPROM.
-* **Tự động hóa quy trình:** Kích hoạt đo tự động khi phát hiện người đến gần qua cảm biến khoảng cách, kết hợp điều khiển bơm nước sát khuẩn tự động và kiểm tra mực dung dịch.
-* **Cảnh báo đa phương thức:** Hiển thị trực quan trên màn hình **OLED SSD1306**, cảnh báo sốt bằng đèn LED và còi Buzzer khi nhiệt độ vượt ngưỡng cài đặt (mặc định $37.5^\circ\text{C}$ – $38.0^\circ\text{C}$).
-* **Hiệu chuẩn & cài đặt trực tiếp trên mạch:** Cho phép tinh chỉnh hệ số hiệu chuẩn và ngưỡng cảnh báo sốt thông qua nút nhấn vật lý, lưu trữ bền vững trong bộ nhớ **EEPROM**.
-* **Giám sát Web thời gian thực (Tại chỗ & Từ xa):**
-  * Kết nối trực tiếp không cần cài app qua **Web Bluetooth API** trên trình duyệt Chrome/Edge.
-  * Đồng bộ dữ liệu lên **Firebase Realtime Database**, cho phép người ở xa theo dõi thông số qua Internet (4G/Wi-Fi) trên mọi thiết bị.
-  * Lưu bảng lịch sử đo theo thời gian thực và hỗ trợ **xuất báo cáo file Excel (`.csv`)**.
-
----
-
-## 2. Kiến trúc hệ thống & Luồng dữ liệu
+**Kiến trúc truyền dữ liệu lên Web Dashboard:**
 
 ```text
-[Cảm biến MLX90614 + Cảm biến khoảng cách]
+[Cảm biến MLX90614 + VL53L0X + E18-D80NK]
                     │ (I2C / Digital)
                     ▼
          [Vi điều khiển ATmega328P] ──► [OLED SSD1306 / LED / Buzzer / Bơm]
-                    │ (UART 9600 bps)
+                    │ (UART 9600 bps - D0, D1)
                     ▼
           [Module BLE HM-10 (0xFFE0)]
                     │ (Web Bluetooth API)
