@@ -8,7 +8,7 @@ Hệ thống kết hợp đo nhiệt độ hồng ngoại không tiếp xúc (**
 
 ## 1. Chức năng tổng quát
 
-Thiết bị đo nhiệt độ bằng cảm biến hồng ngoại **MLX90614**, hiển thị kết quả trên màn hình OLED, đồng thời cảnh báo bằng đèn LED và còi khi nhiệt độ vượt ngưỡng. Thiết bị có thể bắt đầu đo bằng nút nhấn hoặc tự kích hoạt khi cảm biến khoảng cách phát hiện người đến gần. Ngoài ra, hệ thống có chức năng điều khiển bơm nước sát khuẩn tự động và truyền dữ liệu qua Bluetooth BLE lên giao diện Web trực tuyến.
+Thiết bị đo nhiệt độ bằng cảm biến hồng ngoại **MLX90614**, hiển thị kết quả trên màn hình OLED, đồng thời cảnh báo bằng đèn LED và còi khi nhiệt độ vượt ngưỡng. Thiết bị có thể bắt đầu đo bằng nút nhấn hoặc tự kích hoạt khi cảm biến khoảng cách phát hiện người đến gần. Ngoài ra, hệ thống có chức năng điều khiển bơm nước sát khuẩn tự động, định danh người đo và truyền dữ liệu qua Bluetooth BLE lên giao diện Web trực tuyến.
 
 ## 2. Đo và xử lý nhiệt độ
 
@@ -50,7 +50,7 @@ Cảm biến hồng ngoại E18-D80NK phát hiện tay đưa vào. Khi tay đư�
 
 Chương trình có hỗ trợ cảm biến mức dung dịch XKC-Y25-V để khóa bơm và báo hết dung dịch. Tuy nhiên, trong cấu hình hiện tại, `WATER_LEVEL_SENSOR_PRESENT` đang đặt bằng `0`, tức là tính năng đọc cảm biến mức nước **chưa được bật**. Phần điều khiển này được triển khai trong `sanitizer.cpp`.
 
-## 7. Giao tiếp Bluetooth BLE & Giám sát Web Dashboard (Tại chỗ & Từ xa)
+## 7. Giao tiếp Bluetooth BLE & Giám sát Web Dashboard
 
 Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết bị gửi nhiệt độ, nhiệt độ môi trường, trạng thái kết quả đo và trạng thái bộ phận sát khuẩn ra bên ngoài, đồng thời hỗ trợ các lệnh xem ngưỡng hiện tại, thay đổi ngưỡng và cập nhật hệ số hiệu chuẩn trực tiếp vào EEPROM.
 
@@ -66,8 +66,8 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
           [Module BLE HM-10 (0xFFE0)]
                     │ (Web Bluetooth API)
                     ▼
-   [Trạm thu phát Web (Chrome trên Laptop)]
-                    │ (HTTPS REST API)
+   [Trạm thu phát Web (ThermoSync Dashboard)] ◄── [Định danh: Quick Chips / Nhập tên / Quét QR Webcam]
+                    │ (HTTPS REST API - history.json)
                     ▼
       [Firebase Realtime Database (Cloud)]
                     │ (Đồng bộ tự động 1.5s)
@@ -75,10 +75,27 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
     [Thiết bị giám sát từ xa (Điện thoại / PC)]
 ```
 
-- **Kết nối tại chỗ (Không cần cài App):** Mở Web Dashboard bằng trình duyệt **Google Chrome** hoặc **Microsoft Edge** trên máy tính có Bluetooth → bấm **🔗 Kết nối Trạm đo (HM-10)** để nhận dữ liệu trực tiếp qua **Web Bluetooth API** và tự động đẩy lên **Firebase Realtime Database**.
-- **Giám sát từ xa (Qua Internet 4G/Wi-Fi):** Mở link Web trên bất kỳ điện thoại hoặc máy tính nào ở xa (không cần bật Bluetooth); giao diện tự động cập nhật số liệu mới nhất từ Firebase mỗi **1,5 giây**, cảnh báo sốt trực quan và hỗ trợ **xuất bảng lịch sử đo ra file Excel (`.csv`)**.
+- **Kết nối tại chỗ (Web Bluetooth API):** Mở Web Dashboard bằng trình duyệt **Google Chrome** hoặc **Microsoft Edge** trên máy tính có Bluetooth → bấm **🔗 Kết nối HM-10** để nhận dữ liệu trực tiếp qua giao thức GATT (`Service 0xFFE0`, `Characteristic 0xFFE1`) mà không cần cài App trung gian.
 
-## 8. Chân kết nối chính
+## 8. Định danh sinh viên / người đo trên Web
+
+Trước khi thực hiện phép đo, hệ thống cho phép gán danh tính người đo theo 3 cách trực tiếp trên **ThermoSync Dashboard**:
+
+- **Chọn nhanh 1 chạm (Quick Chips) & Danh sách thả xuống:** Tích hợp sẵn danh sách thành viên nhóm (**Xuân Phước**, **Minh Nhân**, **Gia Phúc**, **Khách vãng lai**) để chọn nhanh chỉ với một lần bấm.
+- **Thêm & Lưu danh bạ tùy chỉnh:** Cho phép nhập mới họ tên hoặc MSSV và lưu trực tiếp vào bộ nhớ trình duyệt (`localStorage`) để sử dụng cho các lần sau.
+- **Tùy chỉnh ngưỡng cảnh báo sốt động:** Cho phép thay đổi trực tiếp ngưỡng cảnh báo sốt ngay trên giao diện Web để phân loại trạng thái theo thời gian thực.
+
+## 9. Điểm danh tự động bằng mã QR qua Webcam
+
+- **Quét mã QR trực tiếp bằng camera laptop:** Tích hợp thư viện `html5-qrcode` ngay trên trình duyệt mà không cần đầu đọc mã vạch rời.
+- **Nhận diện mã QR văn bản tĩnh (Static Text):** Khi đưa mã QR chứa tên hoặc MSSV vào trước camera, hệ thống tự động giải mã, điền tên người đo vào phiên đo hiện tại và phát âm thanh *bíp* xác nhận (tự động lọc bỏ các mã chứa đường link URL để tránh nhận diện nhầm).
+
+## 10. Đồng bộ đám mây đa thiết bị & Xuất báo cáo Excel
+
+- **Đồng bộ toàn bộ nhật ký đo qua Firebase Cloud (`history.json`):** Máy tính nối Bluetooth đóng vai trò trạm phát (`Host Station`), tự động ghép cặp `[Thời gian + Tên người đo + Nhiệt độ + Trạng thái]` đẩy lên **Firebase Realtime Database**. Mọi điện thoại hoặc máy tính khác ở xa khi mở link Web sẽ tự động tải toàn bộ bảng lịch sử đo mới nhất mỗi **1,5 giây** (`Xem từ xa`).
+- **Xuất báo cáo thống kê Excel (`.csv`):** Hỗ trợ xuất toàn bộ bảng nhật ký đo ra tệp CSV chuẩn UTF-8 (hiển thị đầy đủ tiếng Việt trên Microsoft Excel) và xóa làm mới nhật ký khi cần.
+
+## 11. Chân kết nối chính
 
 | Chức năng | Chân Arduino |
 | :--- | :---: |
@@ -93,11 +110,11 @@ Module BLE kết nối với Arduino qua UART phần cứng (`D0, D1`). Thiết 
 | Giao tiếp BLE | D0, D1 |
 | I2C cho MLX90614, OLED và VL53L0X | A4 (SDA), A5 (SCL) |
 
-## 9. Cấu trúc thư mục dự án
+## 12. Cấu trúc thư mục dự án
 
 ```text
 Measure-body-temperature-/
 ├── doan_da_sua/          # Mã nguồn firmware C/C++ (config.h, indicators.cpp, sanitizer.cpp, ...)
-├── index.html            # Giao diện Web Dashboard tích hợp Web Bluetooth API & Firebase Cloud
+├── index.html            # Giao diện Web Dashboard tích hợp Web Bluetooth API, QR Scanner & Firebase Cloud
 └── README.md             # Tài liệu mô tả chức năng, sơ đồ chân và hướng dẫn vận hành
 ```
