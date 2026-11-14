@@ -3,295 +3,247 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hệ Thống Giám Sát Thân Nhiệt BLE & Cloud</title>
+  <title>ThermoSync • Smart Health Check-in</title>
+  <!-- Font chữ hiện đại chuẩn GenZ UI -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Thư viện quét mã QR trực tiếp qua Webcam -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     :root {
-      --primary: #2563eb;
+      --bg-gradient: linear-gradient(135deg, #f6f8fd 0%, #eef2ff 50%, #fdf4ff 100%);
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.7);
+      --primary: #6366f1;
+      --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      --secondary-gradient: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
       --normal: #10b981;
-      --fever: #ef4444;
-      --bg: #f1f5f9;
-      --card: #ffffff;
-      --text: #1e293b;
+      --normal-bg: #d1fae5;
+      --fever: #f43f5e;
+      --fever-bg: #ffe4e6;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
     }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-main);
       margin: 0;
-      padding: 20px;
+      padding: 28px 16px;
+      min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      justify-content: center;
     }
-    .container { max-width: 750px; width: 100%; }
-    .header { text-align: center; margin-bottom: 20px; }
-    .header h1 { margin: 0; font-size: 24px; color: #0f172a; }
-    .header p { margin: 5px 0 0; color: #64748b; font-size: 14px; }
-    .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 25px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-      margin-bottom: 20px;
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    /* Header phong cách hiện đại */
+    .header {
       text-align: center;
+      margin-bottom: 28px;
     }
-    .controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .header-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 99px;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 50%, #db2777 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p {
+      margin: 6px 0 0;
+      color: var(--text-sub);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Bento Grid Layout */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 768px) {
+      .bento-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 12px 35px -10px rgba(99, 102, 241, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+      transition: transform 0.2s ease;
+    }
+
+    /* Nút bấm */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
     button {
-      padding: 10px 20px;
-      font-size: 15px;
-      font-weight: 600;
+      font-family: inherit;
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 700;
       border: none;
-      border-radius: 8px;
+      border-radius: 14px;
       cursor: pointer;
-      transition: 0.2s;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn-connect { background: var(--primary); color: white; }
-    .btn-connect:hover { background: #1d4ed8; }
-    .btn-disconnect { background: #64748b; color: white; display: none; }
-    .btn-export { background: #059669; color: white; }
-    .btn-clear { background: #e2e8f0; color: #334155; }
-    
+    button:active { transform: scale(0.96); }
+
+    .btn-connect {
+      background: var(--primary-gradient);
+      color: white;
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+    }
+    .btn-connect:hover { opacity: 0.93; transform: translateY(-1px); }
+
+    .btn-disconnect {
+      background: #475569;
+      color: white;
+      display: none;
+    }
+    .btn-qr {
+      background: var(--secondary-gradient);
+      color: white;
+      box-shadow: 0 6px 16px rgba(236, 72, 153, 0.25);
+    }
+    .btn-add {
+      background: #0f172a;
+      color: white;
+      padding: 10px 15px;
+    }
+    .btn-export {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+    .btn-clear {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .btn-clear:hover { background: #e2e8f0; }
+
+    /* Badges trạng thái */
+    .badge-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
     .status-badge {
-      display: inline-block;
-      padding: 6px 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+    .status-connected { background: var(--normal-bg); color: #065f46; }
+    .status-connected .dot { background: var(--normal); box-shadow: 0 0 8px var(--normal); }
+    .status-cloud { background: #e0e7ff; color: #3730a3; }
+    .status-cloud .dot { background: #6366f1; }
+
+    /* Hiển thị nhiệt độ trung tâm */
+    .temp-box {
+      text-align: center;
+      padding: 16px 12px;
       border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(248,250,252,0.9) 100%);
+      border: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+    .current-person-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 99px;
+      background: #eef2ff;
+      color: #4338ca;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .temp-display {
+      font-size: 74px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin: 8px 0 4px;
+      color: var(--normal);
+      line-height: 1.05;
+      transition: all 0.3s ease;
+    }
+    .alert-text {
+      font-size: 15px;
+      font-weight: 700;
+      min-height: 22px;
+    }
+    .threshold-box {
+      margin-top: 12px;
       font-size: 13px;
       font-weight: 600;
-      background: #e2e8f0;
-      color: #475569;
-      margin: 4px;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
     }
-    .status-connected { background: #dcfce7; color: #166534; }
-    .status-cloud { background: #dbeafe; color: #1e40af; }
-
-    .temp-display {
-      font-size: 76px;
-      font-weight: 800;
-      margin: 20px 0 10px;
-      color: var(--normal);
-      transition: color 0.3s;
-    }
-    .alert-text { font-size: 18px; font-weight: 700; height: 28px; margin-bottom: 10px; }
-    .threshold-box { margin-top: 15px; font-size: 14px; color: #475569; }
     .threshold-box input {
-      width: 60px; padding: 4px 8px; font-size: 14px;
-      border: 1px solid #cbd5e1; border-radius: 6px; text-align: center;
+      width: 68px;
+      padding: 5px 8px;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 700;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      text-align: center;
+      color: var(--text-main);
+      outline: none;
     }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-    th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: center; }
-    th { background-color: #f8fafc; color: #475569; font-weight: 600; }
-    .tag-ok { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
-    .tag-fever { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
-  </style>
-</head>
-<body>
+    .threshold-box input:focus { border-color: var(--primary); }
 
-<div class="container">
-  <div class="header">
-    <h1>GIÁM SÁT THÂN NHIỆT KHÔNG TIẾP XÚC</h1>
-    <p>ATmega328P • MLX90614 • BLE HM-10 & Giám sát từ xa Cloud</p>
-  </div>
-
-  <div class="card">
-    <div class="controls">
-      <button id="btnConnect" class="btn-connect" onclick="connectBLE()">🔗 Kết nối Trạm đo (HM-10)</button>
-      <button id="btnDisconnect" class="btn-disconnect" onclick="disconnectBLE()">❌ Ngắt BLE</button>
-    </div>
-    
-    <div>
-      <span id="statusBadge" class="status-badge">Chế độ: Xem từ xa (Cloud)</span>
-      <span id="syncTime" class="status-badge status-cloud">Đang đồng bộ...</span>
-    </div>
-
-    <div id="tempValue" class="temp-display">--.- °C</div>
-    <div id="alertText" class="alert-text" style="color: #64748b;">Đang chờ dữ liệu...</div>
-
-    <div class="threshold-box">
-      Ngưỡng cảnh báo sốt: 
-      <input type="number" id="feverThreshold" value="37.5" step="0.1"> °C
-    </div>
-  </div>
-
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-      <h3 style="margin: 0;">Lịch sử đo gần đây</h3>
-      <div>
-        <button class="btn-export" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
-        <button class="btn-clear" onclick="clearHistory()">🗑️ Xóa bảng</button>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>STT</th>
-          <th>Thời gian</th>
-          <th>Nhiệt độ (°C)</th>
-          <th>Đánh giá</th>
-        </tr>
-      </thead>
-      <tbody id="historyBody">
-        <tr><td colspan="4" style="color: #94a3b8;">Chưa có dữ liệu đo</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<script>
-  const FIREBASE_DB_URL = "https://measure-body-temperature-default-rtdb.asia-southeast1.firebasedatabase.app/";
-
-  let bleDevice = null;
-  let bleCharacteristic = null;
-  let receiveBuffer = "";
-  let historyData = [];
-  let isHostStation = false;
-  let lastCloudTimestamp = 0;
-
-  const SERVICE_UUID = 0xFFE0;
-  const CHAR_UUID = 0xFFE1;
-
-  // 1. KẾT NỐI BLUETOOTH (Dành cho máy tính đặt cạnh mạch đo)
-  async function connectBLE() {
-    try {
-      bleDevice = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE_UUID] }]
-      });
-      bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-      
-      const server = await bleDevice.gatt.connect();
-      const service = await server.getPrimaryService(SERVICE_UUID);
-      bleCharacteristic = await service.getCharacteristic(CHAR_UUID);
-
-      await bleCharacteristic.startNotifications();
-      bleCharacteristic.addEventListener('characteristicvaluechanged', handleBLEData);
-
-      isHostStation = true;
-      document.getElementById('statusBadge').innerText = "Trạm phát: Đã nối " + (bleDevice.name || "HM-10");
-      document.getElementById('statusBadge').classList.add('status-connected');
-      document.getElementById('btnConnect').style.display = 'none';
-      document.getElementById('btnDisconnect').style.display = 'inline-block';
-    } catch (error) {
-      alert("Lỗi kết nối BLE: " + error.message);
-    }
-  }
-
-  function disconnectBLE() {
-    if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
-  }
-
-  function onDisconnected() {
-    isHostStation = false;
-    document.getElementById('statusBadge').innerText = "Chế độ: Xem từ xa (Cloud)";
-    document.getElementById('statusBadge').classList.remove('status-connected');
-    document.getElementById('btnConnect').style.display = 'inline-block';
-    document.getElementById('btnDisconnect').style.display = 'none';
-  }
-
-  function handleBLEData(event) {
-    const chunk = new TextDecoder().decode(event.target.value);
-    receiveBuffer += chunk;
-    if (receiveBuffer.includes('\n')) {
-      const lines = receiveBuffer.split('\n');
-      receiveBuffer = lines.pop();
-      for (let line of lines) {
-        const match = line.trim().match(/[-+]?\d*\.\d+|\d+/);
-        if (match) {
-          const temp = parseFloat(match[0]);
-          if (!isNaN(temp) && temp > 10 && temp < 60) {
-            const nowTs = Date.now();
-            updateDashboard(temp, nowTs);
-            pushToCloud(temp, nowTs);
-          }
-        }
-      }
-    }
-  }
-
-  // 2. ĐẨY DỮ LIỆU LÊN FIREBASE CLOUD
-  async function pushToCloud(temp, timestamp) {
-    try {
-      await fetch(`${FIREBASE_DB_URL}latest.json`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ temp: temp, timestamp: timestamp })
-      });
-      document.getElementById('syncTime').innerText = "Đã đẩy lên Cloud: " + new Date(timestamp).toLocaleTimeString('vi-VN');
-    } catch (e) {
-      document.getElementById('syncTime').innerText = "Lỗi đồng bộ Cloud";
-    }
-  }
-
-  // 3. TỰ ĐỘNG KÉO DỮ LIỆU TỪ CLOUD (Dành cho thiết bị ở xa)
-  setInterval(async () => {
-    if (isHostStation) return;
-    try {
-      const res = await fetch(`${FIREBASE_DB_URL}latest.json`);
-      const data = await res.json();
-      if (data && data.temp && data.timestamp !== lastCloudTimestamp) {
-        lastCloudTimestamp = data.timestamp;
-        updateDashboard(data.temp, data.timestamp);
-        document.getElementById('syncTime').innerText = "Cập nhật từ xa lúc: " + new Date(data.timestamp).toLocaleTimeString('vi-VN');
-      }
-    } catch (e) {
-      console.log("Đang chờ dữ liệu Cloud...");
-    }
-  }, 1500);
-
-  // 4. CẬP NHẬT GIAO DIỆN & BẢNG LỊCH SỬ
-  function updateDashboard(temp, timestamp) {
-    const threshold = parseFloat(document.getElementById('feverThreshold').value) || 37.5;
-    const isFever = temp >= threshold;
-
-    const tempEl = document.getElementById('tempValue');
-    const alertEl = document.getElementById('alertText');
-    tempEl.innerText = temp.toFixed(1) + " °C";
-    
-    if (isFever) {
-      tempEl.style.color = "var(--fever)";
-      alertEl.style.color = "var(--fever)";
-      alertEl.innerText = "⚠️ CẢNH BÁO: PHÁT HIỆN THÂN NHIỆT CAO!";
-    } else {
-      tempEl.style.color = "var(--normal)";
-      alertEl.style.color = "var(--normal)";
-      alertEl.innerText = "✅ Thân nhiệt bình thường";
-    }
-
-    const timeStr = new Date(timestamp).toLocaleTimeString('vi-VN');
-    historyData.unshift({ time: timeStr, temp: temp.toFixed(1), isFever: isFever });
-    if (historyData.length > 50) historyData.pop();
-    renderTable();
-  }
-
-  function renderTable() {
-    const tbody = document.getElementById('historyBody');
-    if (historyData.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">Chưa có dữ liệu đo</td></tr>';
-      return;
-    }
-    tbody.innerHTML = historyData.map((item, index) => `
-      <tr>
-        <td>${historyData.length - index}</td>
-        <td>${item.time}</td>
-        <td><strong>${item.temp} °C</strong></td>
-        <td>${item.isFever ? '<span class="tag-fever">Sốt cao</span>' : '<span class="tag-ok">Bình thường</span>'}</td>
-      </tr>
-    `).join('');
-  }
-
-  function clearHistory() { historyData = []; renderTable(); }
-
-  function exportCSV() {
-    if (historyData.length === 0) return alert("Chưa có dữ liệu để xuất!");
-    let csvContent = "\uFEFFSTT,Thoi gian,Nhiet do (C),Trang thai\n";
-    historyData.forEach((item, index) => {
-      csvContent += `${historyData.length - index},${item.time},${item.temp},${item.isFever ? "Sot cao" : "Binh thuong"}\n`;
-    });
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "Lich_su_do_than_nhiet.csv";
-    link.click();
-  }
-</script>
-</body>
-</html>
+    /* Khối định danh sinh viên bên phải */
+    .section-title {
+      font-size: 16px;
