@@ -63,3 +63,43 @@ Module BLE kết nối với Arduino qua UART phần cứng. Thiết bị có th
 | I2C cho MLX90614, OLED và VL53L0X | A4 (SDA), A5 (SCL) |
 
 **Tóm tắt:** Hệ thống kết hợp đo nhiệt độ không tiếp xúc, phân loại và cảnh báo kết quả, hiển thị thông tin trên OLED, kết nối BLE, tự động kích hoạt đo bằng cảm biến khoảng cách và điều khiển bơm sát khuẩn.
+# Hệ Thống Đo Thân Nhiệt Không Tiếp Xúc & Giám Sát Từ Xa (BLE – Cloud Web)
+
+Hệ thống đo thân nhiệt hồng ngoại không tiếp xúc sử dụng vi điều khiển **ATmega328P**, tích hợp tự động kích hoạt đo bằng cảm biến khoảng cách, bơm dung dịch sát khuẩn tự động và truyền dữ liệu thời gian thực qua **Bluetooth Low Energy (HM-10)** lên **Web Dashboard (GitHub Pages + Firebase Cloud)** để giám sát tại chỗ và từ xa.
+
+🌐 **Link Web Dashboard trực tuyến:** [https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/](https://xuanphuoc16102006-glitch.github.io/Measure-body-temperature-/)
+
+---
+
+## 1. Tính năng nổi bật
+
+* **Đo thân nhiệt không tiếp xúc độ chính xác cao:** Sử dụng cảm biến hồng ngoại **MLX90614**, lọc nhiễu đa mẫu và bù sai số hiệu chuẩn lưu trong EEPROM.
+* **Tự động hóa quy trình:** Kích hoạt đo tự động khi phát hiện người đến gần qua cảm biến khoảng cách, kết hợp điều khiển bơm nước sát khuẩn tự động và kiểm tra mực dung dịch.
+* **Cảnh báo đa phương thức:** Hiển thị trực quan trên màn hình **OLED SSD1306**, cảnh báo sốt bằng đèn LED và còi Buzzer khi nhiệt độ vượt ngưỡng cài đặt (mặc định $37.5^\circ\text{C}$ – $38.0^\circ\text{C}$).
+* **Hiệu chuẩn & cài đặt trực tiếp trên mạch:** Cho phép tinh chỉnh hệ số hiệu chuẩn và ngưỡng cảnh báo sốt thông qua nút nhấn vật lý, lưu trữ bền vững trong bộ nhớ **EEPROM**.
+* **Giám sát Web thời gian thực (Tại chỗ & Từ xa):**
+  * Kết nối trực tiếp không cần cài app qua **Web Bluetooth API** trên trình duyệt Chrome/Edge.
+  * Đồng bộ dữ liệu lên **Firebase Realtime Database**, cho phép người ở xa theo dõi thông số qua Internet (4G/Wi-Fi) trên mọi thiết bị.
+  * Lưu bảng lịch sử đo theo thời gian thực và hỗ trợ **xuất báo cáo file Excel (`.csv`)**.
+
+---
+
+## 2. Kiến trúc hệ thống & Luồng dữ liệu
+
+```text
+[Cảm biến MLX90614 + Cảm biến khoảng cách]
+                    │ (I2C / Digital)
+                    ▼
+         [Vi điều khiển ATmega328P] ──► [OLED SSD1306 / LED / Buzzer / Bơm]
+                    │ (UART 9600 bps)
+                    ▼
+          [Module BLE HM-10 (0xFFE0)]
+                    │ (Web Bluetooth API)
+                    ▼
+   [Trạm thu phát Web (Chrome trên Laptop)]
+                    │ (HTTPS REST API)
+                    ▼
+      [Firebase Realtime Database (Cloud)]
+                    │ (Đồng bộ tự động 1.5s)
+                    ▼
+    [Thiết bị giám sát từ xa (Điện thoại / PC)]
