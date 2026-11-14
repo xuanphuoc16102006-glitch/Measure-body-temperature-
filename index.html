@@ -83,7 +83,7 @@
     }
     .container { max-width: 940px; width: 100%; }
 
-    /* Top utility bar: Clock + Theme + Language */
+    /* Top utility bar: Clock + Music + Theme + Language */
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -142,6 +142,37 @@
       color: #ffffff;
       box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
       transform: translateY(-1px);
+    }
+
+    /* Music button animation */
+    .music-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 800;
+      background: var(--clock-bg);
+      color: var(--text-sub);
+      border: 1.5px solid var(--border-color);
+      box-shadow: 0 6px 18px rgba(139, 92, 246, 0.08);
+      cursor: pointer;
+    }
+    .music-btn.playing {
+      background: var(--secondary-gradient);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 6px 18px rgba(236, 72, 153, 0.35);
+    }
+    .eq-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+    .eq-bar { width: 2.5px; height: 4px; background: currentColor; border-radius: 2px; }
+    .music-btn.playing .eq-bar:nth-child(1) { animation: eqBounce 0.6s infinite ease-in-out; }
+    .music-btn.playing .eq-bar:nth-child(2) { animation: eqBounce 0.45s infinite ease-in-out 0.15s; }
+    .music-btn.playing .eq-bar:nth-child(3) { animation: eqBounce 0.55s infinite ease-in-out 0.3s; }
+    @keyframes eqBounce {
+      0%, 100% { height: 4px; }
+      50% { height: 12px; }
     }
 
     .header { text-align: center; margin-bottom: 24px; }
@@ -314,6 +345,10 @@
       <span id="liveClockDate" class="clock-date">--/--/----</span>
     </div>
     <div class="top-controls">
+      <button id="btnMusic" class="music-btn" onclick="toggleBgMusic()">
+        <span class="eq-bars"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>
+        <span id="musicLabel">🎵 Nhạc: Chạm để bật</span>
+      </button>
       <div class="pill-switch">
         <button id="btnThemeLight" class="switch-btn active" onclick="setTheme('light')">☀️ Sáng</button>
         <button id="btnThemeDark" class="switch-btn" onclick="setTheme('dark')">🌙 Tối</button>
@@ -417,12 +452,16 @@
   const STORAGE_KEY = "ble_students_v3";
   const LANG_KEY = "ble_ui_lang_v1";
   const THEME_KEY = "ble_ui_theme_v1";
+  const MUSIC_PREF_KEY = "ble_ui_music_v1";
 
   const i18n = {
     vi: {
       docTitle: "Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến",
       themeLight: "☀️ Sáng",
       themeDark: "🌙 Tối",
+      musicOn: "🎵 Nhạc: Đang phát",
+      musicOff: "🔇 Nhạc: Tắt",
+      musicWait: "🎵 Nhạc: Bật",
       pill: "✨ Trạm Kiểm Soát Y Tế Thông Minh 🩺",
       title: "HỆ THỐNG ĐO VÀ GIÁM SÁT THÂN NHIỆT TRỰC TUYẾN",
       subtitle: "ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Đồng bộ Đám mây ☁️",
@@ -478,6 +517,9 @@
       docTitle: "Online Body Temperature Measurement & Monitoring System",
       themeLight: "☀️ Light",
       themeDark: "🌙 Dark",
+      musicOn: "🎵 Chill: On",
+      musicOff: "🔇 Chill: Off",
+      musicWait: "🎵 Chill: Play",
       pill: "✨ Smart Health Screening Station 🩺",
       title: "ONLINE BODY TEMPERATURE MEASUREMENT & MONITORING",
       subtitle: "ATmega328P • MLX90614 • Bluetooth BLE HM-10 • Cloud Sync ☁️",
@@ -539,6 +581,103 @@
   const SERVICE_UUID = 0xFFE0, CHAR_UUID = 0xFFE1;
   const defaultStudents = ["Xuân Phước", "Minh Nhân", "Gia Phúc", "Khách vãng lai"];
 
+  /* --- Chill Lofi Ambient Music Engine (Web Audio API) --- */
+  let audioCtx = null, musicInterval = null, isMusicPlaying = false, noteStep = 0;
+  let musicUserMuted = localStorage.getItem(MUSIC_PREF_KEY) === "muted";
+
+  // Soft Lo-fi Maj7 / Add9 chord arpeggio notes (Hz)
+  const chillNotes = [
+    261.63, 329.63, 392.00, 493.88, // Cmaj7
+    220.00, 261.63, 329.63, 392.00, // Am7
+    174.61, 220.00, 261.63, 329.63, // Fmaj7
+    196.00, 246.94, 293.66, 349.23  // G7
+  ];
+
+  function playSoftChillNote(freq) {
+    if (!audioCtx || audioCtx.state !== "running") return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now);
+
+    // Gentle piano-like envelope (very soft volume so it never disturbs)
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.6);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 1.65);
+  }
+
+  function startChillMusic() {
+    if (isMusicPlaying) return;
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioCtx = new AudioContextClass();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    isMusicPlaying = true;
+    musicUserMuted = false;
+    localStorage.setItem(MUSIC_PREF_KEY, "on");
+    updateMusicButtonUI();
+
+    playSoftChillNote(chillNotes[noteStep % chillNotes.length]);
+    noteStep++;
+    musicInterval = setInterval(() => {
+      if (!isMusicPlaying) return;
+      playSoftChillNote(chillNotes[noteStep % chillNotes.length]);
+      noteStep++;
+    }, 680);
+  }
+
+  function stopChillMusic() {
+    isMusicPlaying = false;
+    if (musicInterval) {
+      clearInterval(musicInterval);
+      musicInterval = null;
+    }
+    updateMusicButtonUI();
+  }
+
+  function toggleBgMusic() {
+    if (isMusicPlaying) {
+      musicUserMuted = true;
+      localStorage.setItem(MUSIC_PREF_KEY, "muted");
+      stopChillMusic();
+    } else {
+      startChillMusic();
+    }
+  }
+
+  function updateMusicButtonUI() {
+    const btn = document.getElementById("btnMusic");
+    const label = document.getElementById("musicLabel");
+    if (!btn || !label) return;
+    btn.classList.toggle("playing", isMusicPlaying);
+    if (isMusicPlaying) {
+      label.innerText = t("musicOn");
+    } else if (musicUserMuted) {
+      label.innerText = t("musicOff");
+    } else {
+      label.innerText = t("musicWait");
+    }
+  }
+
+  // Auto-start music on first user interaction (bypasses browser autoplay block)
+  function unlockAndAutoPlayMusic() {
+    if (!musicUserMuted && !isMusicPlaying) {
+      startChillMusic();
+    }
+    document.removeEventListener("pointerdown", unlockAndAutoPlayMusic);
+    document.removeEventListener("keydown", unlockAndAutoPlayMusic);
+  }
+  document.addEventListener("pointerdown", unlockAndAutoPlayMusic);
+  document.addEventListener("keydown", unlockAndAutoPlayMusic);
+
   function t(key) { return i18n[currentLang][key] || key; }
 
   function formatDisplayName(name) {
@@ -573,6 +712,7 @@
     document.getElementById("btnLangEn").classList.toggle("active", lang === "en");
     document.getElementById("btnThemeLight").innerText = t("themeLight");
     document.getElementById("btnThemeDark").innerText = t("themeDark");
+    updateMusicButtonUI();
 
     document.getElementById("uiPill").innerText = t("pill");
     document.getElementById("uiTitle").innerText = t("title");
