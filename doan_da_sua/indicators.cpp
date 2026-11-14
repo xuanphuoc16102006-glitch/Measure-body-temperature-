@@ -80,7 +80,7 @@ void Indicators::showScreen(const char *bigLine, const char *smallLine,
     _patternActive = false;
     digitalWrite(PIN_LED_GREEN, LOW);
     digitalWrite(PIN_LED_RED,   LOW);
-    noTone(PIN_BUZZER);
+    digitalWrite(PIN_BUZZER,    LOW);
 }
 
 // ---------------------------------------------------------------------------
@@ -117,9 +117,9 @@ void Indicators::showResult(ResultClass result, float tempC, float threshold,
     _patternActive  = true;
 
     if (result == ResultClass::ALARM) {
-        tone(PIN_BUZZER, 2000); // beep pattern driven in tick()
+        digitalWrite(PIN_BUZZER, HIGH); // PB2 = 1; beep pattern driven in tick()
     } else if (result == ResultClass::ERROR) {
-        tone(PIN_BUZZER, 1500, BUZZER_ERROR_DURATION_MS);
+        digitalWrite(PIN_BUZZER, HIGH); // turned off in tick() after 1 s
     }
 }
 
@@ -136,9 +136,9 @@ void Indicators::tick() {
     if (_sanState == SanitizerState::WATER_LOW && !_patternActive) {
         unsigned long phase = now % 4000;
         if (phase < 100 || (phase >= 200 && phase < 300)) {
-            tone(PIN_BUZZER, 1000);
+            digitalWrite(PIN_BUZZER, HIGH);
         } else {
-            noTone(PIN_BUZZER);
+            digitalWrite(PIN_BUZZER, LOW);
         }
     }
 
@@ -155,9 +155,9 @@ void Indicators::tick() {
             bool beepPhase = (elapsed % (1000 / BUZZER_ALARM_BEEP_HZ))
                              < (500 / BUZZER_ALARM_BEEP_HZ);
             if (elapsed < BUZZER_ALARM_DURATION_MS && beepPhase) {
-                tone(PIN_BUZZER, 2000);
+                digitalWrite(PIN_BUZZER, HIGH);  // PB2 = 1 while over threshold
             } else {
-                noTone(PIN_BUZZER);
+                digitalWrite(PIN_BUZZER, LOW);
             }
             if (elapsed >= LED_RED_ON_MS && elapsed >= BUZZER_ALARM_DURATION_MS)
                 _patternActive = false;
@@ -169,6 +169,8 @@ void Indicators::tick() {
             // Blink red LED; pattern latches until the next measurement.
             bool blinkOn = (elapsed % LED_BLINK_PERIOD_MS) < (LED_BLINK_PERIOD_MS / 2);
             digitalWrite(PIN_LED_RED, blinkOn ? HIGH : LOW);
+            if (_activePattern == ResultClass::ERROR)
+                digitalWrite(PIN_BUZZER, elapsed < BUZZER_ERROR_DURATION_MS ? HIGH : LOW);
             break;
         }
     }
