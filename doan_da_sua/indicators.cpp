@@ -57,6 +57,9 @@ void Indicators::drawSanitizerRow() {
 // ---------------------------------------------------------------------------
 void Indicators::setSanitizerState(SanitizerState state) {
     if (state == _sanState) return;
+    // Leaving WATER_LOW mid-beep: tick() stops driving PB2, so turn it off here.
+    if (_sanState == SanitizerState::WATER_LOW && !_patternActive)
+        digitalWrite(PIN_BUZZER, LOW);
     _sanState = state;
     drawSanitizerRow(); // update row 7 in place, no full redraw needed
 }
@@ -155,7 +158,7 @@ void Indicators::tick() {
             bool beepPhase = (elapsed % (1000 / BUZZER_ALARM_BEEP_HZ))
                              < (500 / BUZZER_ALARM_BEEP_HZ);
             if (elapsed < BUZZER_ALARM_DURATION_MS && beepPhase) {
-                digitalWrite(PIN_BUZZER, HIGH);  // PB2 = 1 while over threshold
+                digitalWrite(PIN_BUZZER, HIGH);  // PB2 = 1 during each alarm beep
             } else {
                 digitalWrite(PIN_BUZZER, LOW);
             }
