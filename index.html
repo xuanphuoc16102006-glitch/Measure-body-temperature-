@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ Thống Giám Sát Thân Nhiệt BLE</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --normal: #10b981;
+      --fever: #ef4444;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 750px;
+      width: 100%;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #0f172a;
+    }
+    .header p {
+      margin: 5px 0 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-connect { background: var(--primary); color: white; }
+    .btn-connect:hover { background: #1d4ed8; }
+    .btn-disconnect { background: #64748b; color: white; display: none; }
+    .btn-export { background: #059669; color: white; }
+    .btn-export:hover { background: #047857; }
+    .btn-clear { background: #e2e8f0; color: #334155; }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #e2e8f0;
+      color: #475569;
+    }
+    .status-connected { background: #dcfce7; color: #166534; }
+
+    .temp-display {
+      font-size: 76px;
+      font-weight: 800;
+      margin: 20px 0 10px;
+      color: var(--normal);
+      transition: color 0.3s;
+    }
+    .alert-text {
+      font-size: 18px;
+      font-weight: 700;
+      height: 28px;
+      margin-bottom: 10px;
+    }
+    .threshold-box {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #475569;
+    }
+    .threshold-box input {
+      width: 60px;
+      padding: 4px 8px;
+      font-size: 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+    }
+    .tag-ok { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+    .tag-fever { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>GIÁM SÁT THÂN NHIỆT KHÔNG TIẾP XÚC</h1>
+    <p>ATmega328P • Cảm biến hồng ngoại MLX90614 • Giao tiếp BLE HM-10</p>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <button id="btnConnect" class="btn-connect" onclick="connectBLE()">🔗 Kết nối HM-10</button>
+      <button id="btnDisconnect" class="btn-disconnect" onclick="disconnectBLE()">❌ Ngắt kết nối</button>
+    </div>
+    
+    <div><span id="statusBadge" class="status-badge">Chưa kết nối thiết bị</span></div>
+
+    <div id="tempValue" class="temp-display">--.- °C</div>
+    <div id="alertText" class="alert-text" style="color: #64748b;">Đang chờ dữ liệu...</div>
+
+    <div class="threshold-box">
+      Ngưỡng cảnh báo sốt trên Web: 
+      <input type="number" id="feverThreshold" value="37.5" step="0.1"> °C
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <h3 style="margin: 0;">Lịch sử đo gần đây</h3>
+      <div>
+        <button class="btn-export" onclick="exportCSV()">📥 Xuất file Excel (CSV)</button>
+        <button class="btn-clear" onclick="clearHistory()">🗑️ Xóa bảng</button>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Thời gian</th>
+          <th>Nhiệt độ (°C)</th>
+          <th>Đánh giá</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody">
+        <tr><td colspan="4" style="color: #94a3b8;">Chưa có dữ liệu đo</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  let bleDevice = null;
+  let bleCharacteristic = null;
+  let receiveBuffer = "";
+  let historyData = [];
+
+  // UUID chuẩn của module HM-10 / MLT-BT05
+  const SERVICE_UUID = 0xFFE0;
+  const CHAR_UUID = 0xFFE1;
+
+  async function connectBLE() {
+    try {
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SERVICE_UUID] }]
+      });
+
+      bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+      
+      const server = await bleDevice.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      bleCharacteristic = await service.getCharacteristic(CHAR_UUID);
+
+      await bleCharacteristic.startNotifications();
+      bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+
+      // Cập nhật giao diện khi kết nối thành công
+      document.getElementById('statusBadge').innerText = "Đã kết nối: " + (bleDevice.name || "HM-10");
+      document.getElementById('statusBadge').classList.add('status-connected');
+      document.getElementById('btnConnect').style.display = 'none';
+      document.getElementById('btnDisconnect').style.display = 'inline-block';
+      document.getElementById('alertText').innerText = "Sẵn sàng nhận dữ liệu";
+
+    } catch (error) {
+      console.error(error);
+      alert("Không thể kết nối Bluetooth: " + error.message);
+    }
+  }
+
+  function disconnectBLE() {
+    if (bleDevice && bleDevice.gatt.connected) {
+      bleDevice.gatt.disconnect();
+    }
+  }
+
+  function onDisconnected() {
+    document.getElementById('statusBadge').innerText = "Đã ngắt kết nối";
+    document.getElementById('statusBadge').classList.remove('status-connected');
+    document.getElementById('btnConnect').style.display = 'inline-block';
+    document.getElementById('btnDisconnect').style.display = 'none';
+    document.getElementById('tempValue').innerText = "--.- °C";
+    document.getElementById('alertText').innerText = "Mất kết nối với mạch đo";
+  }
+
+  function handleData(event) {
+    const chunk = new TextDecoder().decode(event.target.value);
+    receiveBuffer += chunk;
+
+    // Cắt dữ liệu mỗi khi gặp ký tự xuống dòng \n
+    if (receiveBuffer.includes('\n')) {
+      const lines = receiveBuffer.split('\n');
+      receiveBuffer = lines.pop(); // Giữ lại phần chưa hoàn chỉnh
+
+      for (let line of lines) {
+        line = line.trim();
+        // Lọc lấy con số (kể cả khi mạch gửi dạng "TEMP:36.8" hoặc "36.8")
+        const match = line.match(/[-+]?\d*\.\d+|\d+/);
+        if (match) {
+          const temp = parseFloat(match[0]);
+          if (!isNaN(temp) && temp > 10 && temp < 60) {
+            updateDashboard(temp);
+          }
+        }
+      }
+    }
+  }
+
+  function updateDashboard(temp) {
+    const threshold = parseFloat(document.getElementById('feverThreshold').value) || 37.5;
+    const isFever = temp >= threshold;
+
+    const tempEl = document.getElementById('tempValue');
+    const alertEl = document.getElementById('alertText');
+
+    tempEl.innerText = temp.toFixed(1) + " °C";
+    
+    if (isFever) {
+      tempEl.style.color = "var(--fever)";
+      alertEl.style.color = "var(--fever)";
+      alertEl.innerText = "⚠️ CẢNH BÁO: PHÁT HIỆN THÂN NHIỆT CAO!";
+    } else {
+      tempEl.style.color = "var(--normal)";
+      alertEl.style.color = "var(--normal)";
+      alertEl.innerText = "✅ Thân nhiệt bình thường";
+    }
+
+    // Lưu vào lịch sử
+    const now = new Date().toLocaleTimeString('vi-VN');
+    historyData.unshift({ time: now, temp: temp.toFixed(1), isFever: isFever });
+    if (historyData.length > 50) historyData.pop(); // Giữ tối đa 50 dòng
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('historyBody');
+    if (historyData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">Chưa có dữ liệu đo</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = historyData.map((item, index) => `
+      <tr>
+        <td>${historyData.length - index}</td>
+        <td>${item.time}</td>
+        <td><strong>${item.temp} °C</strong></td>
+        <td>${item.isFever ? '<span class="tag-fever">Sốt cao</span>' : '<span class="tag-ok">Bình thường</span>'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function clearHistory() {
+    historyData = [];
+    renderTable();
+  }
+
+  function exportCSV() {
+    if (historyData.length === 0) {
+      alert("Chưa có dữ liệu để xuất!");
+      return;
+    }
+    let csvContent = "\uFEFFSTT,Thoi gian,Nhiet do (C),Trang thai\n";
+    historyData.forEach((item, index) => {
+      const status = item.isFever ? "Sot cao" : "Binh thuong";
+      csvContent += `${historyData.length - index},${item.time},${item.temp},${status}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "Lich_su_do_than_nhiet.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>
+
+</body>
+</html>
