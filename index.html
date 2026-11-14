@@ -247,6 +247,16 @@
       text-align: center; padding: 18px 12px; border-radius: 22px;
       background: var(--surface-card-inner);
       border: 1.5px solid var(--border-color); margin: 14px 0;
+      transition: all 0.3s ease;
+    }
+    .temp-box.fever-alert-box {
+      border-color: var(--fever);
+      box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.18), 0 10px 26px rgba(244, 63, 94, 0.25);
+      animation: feverPulse 1s infinite alternate;
+    }
+    @keyframes feverPulse {
+      from { box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.15); }
+      to { box-shadow: 0 0 0 6px rgba(244, 63, 94, 0.32); }
     }
     .current-person-chip {
       display: inline-flex; align-items: center; gap: 6px; padding: 5px 15px;
@@ -259,13 +269,19 @@
     .alert-text { font-size: 15px; font-weight: 700; min-height: 22px; }
     .threshold-box {
       margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--text-sub);
-      display: flex; justify-content: center; align-items: center; gap: 6px;
+      display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap;
     }
     .threshold-box input {
       width: 68px; padding: 5px 8px; font-family: inherit; font-size: 13.5px; font-weight: 700;
       border: 1.5px solid var(--border-color); border-radius: 12px; text-align: center;
       color: var(--text-main); background: var(--input-bg); outline: none;
     }
+    .btn-test-alarm {
+      background: var(--fever-bg); color: var(--fever-text);
+      padding: 5px 11px; border-radius: 99px; font-size: 11.5px; font-weight: 800;
+      margin-left: 4px;
+    }
+    .btn-test-alarm:hover { background: var(--fever); color: #ffffff; }
 
     .section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .section-title { font-size: 16px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
@@ -379,7 +395,7 @@
         <span id="statusBadge" class="status-badge"><span class="dot"></span><span id="statusText">Chế độ: Xem từ xa (Cloud)</span></span>
         <span class="status-badge status-cloud"><span class="dot"></span><span id="syncTime">Đang kết nối Đám mây...</span></span>
       </div>
-      <div class="temp-box">
+      <div id="tempBox" class="temp-box">
         <div class="current-person-chip">🧸 <span id="uiMeasuringLabel">Đang đo:</span> <span id="currentPersonLabel">Xuân Phước</span></div>
         <div id="tempValue" class="temp-display">--.- °C</div>
         <div id="alertText" class="alert-text" style="color: var(--text-sub);">Sẵn sàng nhận dữ liệu đo...</div>
@@ -388,6 +404,7 @@
         <span id="uiThresholdLabel">🔥 Ngưỡng cảnh báo sốt:</span>
         <input type="number" id="feverThreshold" value="38.0" step="0.1">
         <span>°C</span>
+        <button id="btnTestAlarm" class="btn-test-alarm" onclick="playFeverAlarm()">🔔 Thử còi</button>
       </div>
     </div>
 
@@ -483,6 +500,7 @@
       alertFever: "🚨 CẢNH BÁO: THÂN NHIỆT VƯỢT NGƯỠNG!",
       alertNormal: "✅ Thân nhiệt bình thường",
       thresholdLabel: "🔥 Ngưỡng cảnh báo sốt:",
+      btnTestAlarm: "🔔 Thử còi",
       idTitle: "🎓 Định danh sinh viên",
       btnResetDefault: "🔄 Khôi phục mặc định",
       idSub: "Chọn nhanh tên bên dưới (bấm ✕ để xóa), nhập mới hoặc quét mã QR",
@@ -541,6 +559,7 @@
       alertFever: "🚨 ALERT: HIGH TEMPERATURE DETECTED!",
       alertNormal: "✅ Normal body temperature",
       thresholdLabel: "🔥 Fever threshold:",
+      btnTestAlarm: "🔔 Test Alarm",
       idTitle: "🎓 Student Identification",
       btnResetDefault: "🔄 Reset default",
       idSub: "Quick-select below (click ✕ to remove), add new or scan QR code",
@@ -580,7 +599,7 @@
   let currentTheme = localStorage.getItem(THEME_KEY) || "light";
   let bleDevice = null, bleCharacteristic = null, receiveBuffer = "", historyData = [], isHostStation = false, lastCloudSignature = "";
   let currentPerson = "Xuân Phước", html5QrcodeScanner = null, isScanningQR = false;
-  let filterFeverOnly = false, lastDisplayedTemp = null;
+  let filterFeverOnly = false, lastDisplayedTemp = null, lastAlarmRecordId = "";
   const SERVICE_UUID = 0xFFE0, CHAR_UUID = 0xFFE1;
   const defaultStudents = ["Xuân Phước", "Minh Nhân", "Gia Phúc", "Khách vãng lai"];
 
@@ -588,12 +607,47 @@
   let audioCtx = null, synthInterval = null, isMusicPlaying = false, noteStep = 0;
   let musicUserMuted = localStorage.getItem(MUSIC_PREF_KEY) === "muted";
 
-  // Retro 1999 Hong Kong City-Pop / Cantopop minor-pentatonic synth melody (Hz)
+  function autoStopMusicForFunction() {
+    if (isMusicPlaying) {
+      stopHongKong1999Music();
+    }
+  }
+
+  /* --- Fever Alarm Siren (Auto-stops background music + 3-pulse medical warning beep) --- */
+  function playFeverAlarm() {
+    autoStopMusicForFunction();
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!audioCtx) audioCtx = new AudioContextClass();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      const pulseOffsets = [0, 0.32, 0.64];
+      pulseOffsets.forEach((offset) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(880, now + offset);
+        osc.frequency.linearRampToValueAtTime(1150, now + offset + 0.18);
+
+        gain.gain.setValueAtTime(0.001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.28, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.22);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.24);
+      });
+    } catch (e) {}
+  }
+
   const hk1999RetroNotes = [
-    329.63, 392.00, 440.00, 493.88, 587.33, 493.88, 440.00, 392.00, // Em9 nostalgia
-    261.63, 329.63, 392.00, 493.88, 523.25, 493.88, 392.00, 329.63, // Cmaj9
-    220.00, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66, // Am11
-    246.94, 329.63, 369.99, 440.00, 493.88, 440.00, 369.99, 329.63  // Bm7
+    329.63, 392.00, 440.00, 493.88, 587.33, 493.88, 440.00, 392.00,
+    261.63, 329.63, 392.00, 493.88, 523.25, 493.88, 392.00, 329.63,
+    220.00, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66,
+    246.94, 329.63, 369.99, 440.00, 493.88, 440.00, 369.99, 329.63
   ];
 
   function playHkRetroNote(freq) {
@@ -601,11 +655,11 @@
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = "triangle"; // Warm retro 90s electric piano timbre
+    osc.type = "triangle";
     osc.frequency.setValueAtTime(freq, now);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.04, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.05);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
 
     osc.connect(gain);
@@ -651,10 +705,8 @@
       const playPromise = audioEl.play();
       if (playPromise !== undefined) {
         playPromise.then(() => {
-          // MP3 hongkong1999.mp3 loaded & playing!
           stopRetroSynthFallback();
         }).catch(() => {
-          // If hongkong1999.mp3 is not uploaded yet, play Retro 1999 Synth seamlessly
           startRetroSynthFallback();
         });
       }
@@ -695,7 +747,6 @@
     }
   }
 
-  // Try immediate autoplay on load, plus unlock on first click/tap
   window.addEventListener("load", () => {
     if (!musicUserMuted) {
       const audioEl = document.getElementById("hk1999Audio");
@@ -709,8 +760,10 @@
     }
   });
 
-  function unlockAndAutoPlayMusic() {
-    if (!musicUserMuted && !isMusicPlaying) {
+  function unlockAndAutoPlayMusic(e) {
+    // Only auto-start music when clicking passive areas (not functional buttons/inputs)
+    const isFunctionalControl = e && e.target && e.target.closest("button, input, select");
+    if (!isFunctionalControl && !musicUserMuted && !isMusicPlaying) {
       startHongKong1999Music();
     }
     document.removeEventListener("pointerdown", unlockAndAutoPlayMusic);
@@ -763,6 +816,7 @@
     document.getElementById("statusText").innerText = isHostStation ? (t("modeHost") + (bleDevice?.name || "HM-10")) : t("modeRemote");
     document.getElementById("uiMeasuringLabel").innerText = t("measuringLabel");
     document.getElementById("uiThresholdLabel").innerText = t("thresholdLabel");
+    document.getElementById("btnTestAlarm").innerText = t("btnTestAlarm");
     document.getElementById("uiIdTitle").innerText = t("idTitle");
     document.getElementById("btnResetDefault").innerText = t("btnResetDefault");
     document.getElementById("uiIdSub").innerText = t("idSub");
@@ -784,7 +838,7 @@
     document.getElementById("thDel").innerText = t("thDel");
 
     if (lastDisplayedTemp !== null) {
-      updateMainDisplay(lastDisplayedTemp);
+      updateMainDisplay(lastDisplayedTemp, false);
     } else {
       document.getElementById("alertText").innerText = t("readyText");
     }
@@ -835,6 +889,7 @@
       }
 
       chip.onclick = () => {
+        autoStopMusicForFunction();
         document.getElementById("personSelect").value = name;
         document.getElementById("personInput").value = name === "Khách vãng lai" ? "" : name;
         updateCurrentPerson(name, true);
@@ -846,6 +901,7 @@
 
   function removePersonByName(name) {
     if (name === "Khách vãng lai") return;
+    autoStopMusicForFunction();
     let saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [...defaultStudents];
     saved = saved.filter(item => item !== name);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
@@ -855,12 +911,14 @@
   }
 
   function deleteSelectedPerson() {
+    autoStopMusicForFunction();
     const val = document.getElementById("personSelect").value;
     if (!val || val === "Khách vãng lai") return alert(t("alertSelectToDelete"));
     removePersonByName(val);
   }
 
   function resetDefaultPeople() {
+    autoStopMusicForFunction();
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...defaultStudents]));
     currentPerson = "Xuân Phước";
     document.getElementById("personInput").value = "";
@@ -868,6 +926,7 @@
   }
 
   function selectPersonFromList() {
+    autoStopMusicForFunction();
     const val = document.getElementById("personSelect").value;
     document.getElementById("personInput").value = val === "Khách vãng lai" ? "" : val;
     updateCurrentPerson(val, true);
@@ -885,6 +944,7 @@
   }
 
   function savePersonToList() {
+    autoStopMusicForFunction();
     const val = document.getElementById("personInput").value.trim();
     if (!val) return alert(t("alertEnterName"));
     let saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -898,6 +958,7 @@
   }
 
   function toggleQRScanner() {
+    autoStopMusicForFunction();
     const qrDiv = document.getElementById("qr-reader"), btnQR = document.getElementById("btnQR");
     if (!isScanningQR) {
       qrDiv.style.display = "block"; btnQR.innerText = t("btnQRStop"); isScanningQR = true;
@@ -921,10 +982,12 @@
   }
 
   function playBeep() {
+    autoStopMusicForFunction();
     try { const ctx = new (window.AudioContext || window.webkitAudioContext)(), osc = ctx.createOscillator(); osc.type = "sine"; osc.frequency.setValueAtTime(880, ctx.currentTime); osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.12); } catch (e) {}
   }
 
   async function connectBLE() {
+    autoStopMusicForFunction();
     try {
       bleDevice = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
       bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
@@ -940,7 +1003,10 @@
     } catch (error) { alert("BLE Error: " + error.message); }
   }
 
-  function disconnectBLE() { if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); }
+  function disconnectBLE() {
+    autoStopMusicForFunction();
+    if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+  }
 
   function onDisconnected() {
     isHostStation = false;
@@ -987,11 +1053,13 @@
   }
 
   async function recordAndSync(temp, timestamp, personName) {
+    autoStopMusicForFunction();
     const threshold = parseFloat(document.getElementById('feverThreshold').value) || 38.0;
     const isFever = temp >= threshold;
     const timeStr = new Date(timestamp).toLocaleTimeString('vi-VN');
 
-    updateMainDisplay(temp);
+    lastAlarmRecordId = `${timestamp}_${temp}`;
+    updateMainDisplay(temp, true);
     historyData.unshift({ time: timeStr, person: personName, temp: temp.toFixed(1), isFever: isFever, timestamp: timestamp });
     if (historyData.length > 50) historyData.pop();
     renderTable();
@@ -1007,11 +1075,17 @@
       if (Array.isArray(cloudList) && cloudList.length > 0) {
         const latestSig = JSON.stringify(cloudList[0]) + "_" + cloudList.length;
         if (latestSig !== lastCloudSignature) {
+          const isFirstLoad = lastCloudSignature === "";
           lastCloudSignature = latestSig;
           historyData = cloudList;
           const newest = historyData[0];
+          const recId = `${newest.timestamp || newest.time}_${newest.temp}`;
+          const shouldRing = !isFirstLoad && recId !== lastAlarmRecordId;
+          lastAlarmRecordId = recId;
+
+          if (shouldRing) autoStopMusicForFunction();
           updateCurrentPerson(newest.person || "Khách vãng lai", true);
-          updateMainDisplay(parseFloat(newest.temp));
+          updateMainDisplay(parseFloat(newest.temp), shouldRing);
           renderTable();
         }
         document.getElementById('syncTime').innerText = t("cloudSyncedAt") + new Date().toLocaleTimeString('vi-VN');
@@ -1026,28 +1100,38 @@
     }
   }
 
-  function updateMainDisplay(temp) {
+  function updateMainDisplay(temp, triggerAlarmSound = false) {
     lastDisplayedTemp = temp;
     const threshold = parseFloat(document.getElementById('feverThreshold').value) || 38.0;
     const isFever = temp >= threshold;
-    const tempEl = document.getElementById('tempValue'), alertEl = document.getElementById('alertText');
+    const tempEl = document.getElementById('tempValue');
+    const alertEl = document.getElementById('alertText');
+    const tempBoxEl = document.getElementById('tempBox');
+
     tempEl.innerText = temp.toFixed(1) + " °C";
     if (isFever) {
-      tempEl.style.color = "var(--fever)"; alertEl.style.color = "var(--fever)";
+      tempEl.style.color = "var(--fever)";
+      alertEl.style.color = "var(--fever)";
       alertEl.innerText = t("alertFever");
+      tempBoxEl.classList.add("fever-alert-box");
+      if (triggerAlarmSound) playFeverAlarm();
     } else {
-      tempEl.style.color = "var(--normal)"; alertEl.style.color = "var(--normal)";
+      tempEl.style.color = "var(--normal)";
+      alertEl.style.color = "var(--normal)";
       alertEl.innerText = t("alertNormal");
+      tempBoxEl.classList.remove("fever-alert-box");
     }
   }
 
   function toggleFeverFilter() {
+    autoStopMusicForFunction();
     filterFeverOnly = !filterFeverOnly;
     document.getElementById("btnFilterFever").classList.toggle("active", filterFeverOnly);
     renderTable();
   }
 
   async function deleteHistoryRow(index) {
+    autoStopMusicForFunction();
     historyData.splice(index, 1);
     renderTable();
     await pushHistoryToCloud();
@@ -1091,6 +1175,7 @@
   }
 
   async function clearHistory() {
+    autoStopMusicForFunction();
     historyData = [];
     renderTable();
     try {
@@ -1100,6 +1185,7 @@
   }
 
   function exportCSV() {
+    autoStopMusicForFunction();
     if (historyData.length === 0) return alert(t("alertNoExport"));
     let csvContent = t("csvHeader");
     historyData.forEach((item, index) => {
