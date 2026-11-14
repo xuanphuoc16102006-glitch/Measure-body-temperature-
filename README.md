@@ -46,9 +46,7 @@ Cảm biến VL53L0X hỗ trợ kích hoạt đo tự động khi phát hiện �
 
 ## 6. Điều khiển bộ phận sát khuẩn
 
-Cảm biến hồng ngoại E18-D80NK phát hiện tay đưa vào. Khi tay được phát hiện ổn định, chương trình bật bơm trong khoảng **1,5 giây**, sau đó chờ **2,5 giây** trước chu kỳ kế tiếp. Người dùng phải rút tay ra trước khi hệ thống chấp nhận lần kích hoạt mới.
-
-Chương trình có hỗ trợ cảm biến mức dung dịch XKC-Y25-V để khóa bơm và báo hết dung dịch. Tuy nhiên, trong cấu hình hiện tại, `WATER_LEVEL_SENSOR_PRESENT` đang đặt bằng `0`, tức là tính năng đọc cảm biến mức nước **chưa được bật**. Phần điều khiển này được triển khai trong `sanitizer.cpp`.
+Cảm biến hồng ngoại **E18-D80NK** phát hiện tay đưa vào. Khi tay được phát hiện ổn định, chương trình bật bơm trong khoảng **1,5 giây**, sau đó chờ **2,5 giây** trước chu kỳ kế tiếp. Người dùng phải rút tay ra trước khi hệ thống chấp nhận lần kích hoạt mới. Phần điều khiển này được triển khai trong `sanitizer.cpp`.
 
 ## 7. Giao tiếp Bluetooth BLE & Giám sát Web Dashboard
 
@@ -105,7 +103,6 @@ Trước khi thực hiện phép đo, hệ thống cho phép gán danh tính ng�
 | LED đỏ | D11 / PB3 |
 | LED xanh | D12 / PB4 |
 | Cảm biến phát hiện tay | D4 |
-| Cảm biến mức dung dịch | D5, hiện chưa bật |
 | Điều khiển bơm | D6 |
 | Giao tiếp BLE | D0, D1 |
 | I2C cho MLX90614, OLED và VL53L0X | A4 (SDA), A5 (SCL) |
