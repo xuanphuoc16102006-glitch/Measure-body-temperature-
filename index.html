@@ -145,7 +145,7 @@
       </div>
       <div class="badge-row">
         <span id="statusBadge" class="status-badge"><span class="dot"></span><span id="statusText">Chế độ: Xem từ xa (Cloud)</span></span>
-        <span class="status-badge status-cloud"><span class="dot"></span><span id="syncTime">Đang đồng bộ...</span></span>
+        <span class="status-badge status-cloud"><span class="dot"></span><span id="syncTime">Đang kết nối Cloud...</span></span>
       </div>
       <div class="temp-box">
         <div class="current-person-chip">👤 Đang đo: <span id="currentPersonLabel">Xuân Phước</span></div>
@@ -177,10 +177,10 @@
   </div>
   <div class="card">
     <div class="table-header">
-      <div><h3 class="section-title" style="margin: 0;">📊 Nhật ký đo thời gian thực</h3></div>
+      <div><h3 class="section-title" style="margin: 0;">📊 Nhật ký đo đồng bộ Cloud</h3></div>
       <div style="display: flex; gap: 8px;">
         <button class="btn-export" onclick="exportCSV()">📥 Xuất Excel (CSV)</button>
-        <button class="btn-clear" onclick="clearHistory()">🗑️ Xóa bảng</button>
+        <button class="btn-clear" onclick="clearHistory()">🗑️ Xóa nhật ký</button>
       </div>
     </div>
     <div class="table-wrapper">
@@ -189,7 +189,7 @@
           <tr><th>STT</th><th>Thời gian</th><th>Sinh viên / Người đo</th><th>Nhiệt độ</th><th>Trạng thái</th></tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="5" style="color: #94a3b8; padding: 24px;">Chưa có dữ liệu đo nào được ghi nhận</td></tr>
+          <tr><td colspan="5" style="color: #94a3b8; padding: 24px;">Đang tải nhật ký từ Cloud...</td></tr>
         </tbody>
       </table>
     </div>
@@ -197,8 +197,8 @@
 </div>
 <script>
   const FIREBASE_DB_URL = "https://measure-body-temperature-default-rtdb.asia-southeast1.firebasedatabase.app/";
-  const STORAGE_KEY = "ble_students_v2";
-  let bleDevice = null, bleCharacteristic = null, receiveBuffer = "", historyData = [], isHostStation = false, lastCloudTimestamp = 0;
+  const STORAGE_KEY = "ble_students_v3";
+  let bleDevice = null, bleCharacteristic = null, receiveBuffer = "", historyData = [], isHostStation = false, lastCloudSignature = "";
   let currentPerson = "Xuân Phước", html5QrcodeScanner = null, isScanningQR = false;
   const SERVICE_UUID = 0xFFE0, CHAR_UUID = 0xFFE1;
   const defaultStudents = ["Xuân Phước", "Minh Nhân", "Gia Phúc", "Khách vãng lai"];
@@ -251,7 +251,16 @@
       qrDiv.style.display = "block"; btnQR.innerText = "⏹️ Đóng Camera QR"; isScanningQR = true;
       html5QrcodeScanner = new Html5Qrcode("qr-reader");
       html5QrcodeScanner.start({ facingMode: "user" }, { fps: 10, qrbox: { width: 200, height: 200 } },
-        (decodedText) => { document.getElementById("personInput").value = decodedText; updateCurrentPerson(decodedText, true); playBeep(); },
+        (decodedText) => {
+          const text = decodedText.trim();
+          if (text.startsWith("http://") || text.startsWith("https://")) {
+            alert("Mã QR này đang chứa đường link web (" + text + "). Hãy tạo mã QR dạng Văn bản thuần (Static Text) chứa tên sinh viên!");
+            return;
+          }
+          document.getElementById("personInput").value = text;
+          updateCurrentPerson(text, true);
+          playBeep();
+        },
         () => {}
       ).catch(err => { alert("Không thể mở Camera: " + err); qrDiv.style.display = "none"; btnQR.innerText = "📷 Bật Camera quét mã QR"; isScanningQR = false; });
     } else if (html5QrcodeScanner) {
@@ -299,50 +308,85 @@
           const temp = parseFloat(match[0]);
           if (!isNaN(temp) && temp > 10 && temp < 60) {
             const nowTs = Date.now();
-            updateDashboard(temp, nowTs, currentPerson);
-            pushToCloud(temp, nowTs, currentPerson);
+            recordAndSync(temp, nowTs, currentPerson);
           }
         }
       }
     }
   }
 
-  async function pushToCloud(temp, timestamp, personName) {
-    try {
-      await fetch(`${FIREBASE_DB_URL}latest.json`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ temp: temp, timestamp: timestamp, person: personName }) });
-      document.getElementById('syncTime').innerText = "Đồng bộ Cloud: " + new Date(timestamp).toLocaleTimeString('vi-VN');
-    } catch (e) { document.getElementById('syncTime').innerText = "Lỗi đồng bộ Cloud"; }
-  }
-
-  setInterval(async () => {
-    if (isHostStation) return;
-    try {
-      const res = await fetch(`${FIREBASE_DB_URL}latest.json`), data = await res.json();
-      if (data && data.temp && data.timestamp !== lastCloudTimestamp) {
-        lastCloudTimestamp = data.timestamp;
-        const remotePerson = data.person || "Khách vãng lai";
-        updateCurrentPerson(remotePerson, true);
-        updateDashboard(data.temp, data.timestamp, remotePerson);
-        document.getElementById('syncTime').innerText = "Cập nhật lúc: " + new Date(data.timestamp).toLocaleTimeString('vi-VN');
-      }
-    } catch (e) {}
-  }, 1500);
-
-  function updateDashboard(temp, timestamp, personName) {
-    const threshold = parseFloat(document.getElementById('feverThreshold').value) || 38.0, isFever = temp >= threshold;
-    const tempEl = document.getElementById('tempValue'), alertEl = document.getElementById('alertText');
-    tempEl.innerText = temp.toFixed(1) + " °C";
-    if (isFever) { tempEl.style.color = "var(--fever)"; alertEl.style.color = "var(--fever)"; alertEl.innerText = "🚨 CẢNH BÁO: THÂN NHIỆT VƯỢT NGƯỠNG!"; }
-    else { tempEl.style.color = "var(--normal)"; alertEl.style.color = "var(--normal)"; alertEl.innerText = "✅ Thân nhiệt bình thường"; }
+  async function recordAndSync(temp, timestamp, personName) {
+    const threshold = parseFloat(document.getElementById('feverThreshold').value) || 38.0;
+    const isFever = temp >= threshold;
     const timeStr = new Date(timestamp).toLocaleTimeString('vi-VN');
-    historyData.unshift({ time: timeStr, person: personName, temp: temp.toFixed(1), isFever: isFever });
+
+    updateMainDisplay(temp, personName);
+    historyData.unshift({ time: timeStr, person: personName, temp: temp.toFixed(1), isFever: isFever, timestamp: timestamp });
     if (historyData.length > 50) historyData.pop();
     renderTable();
+
+    try {
+      await fetch(`${FIREBASE_DB_URL}history.json`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(historyData)
+      });
+      lastCloudSignature = JSON.stringify(historyData[0]);
+      document.getElementById('syncTime').innerText = "Đã đẩy Cloud: " + timeStr;
+    } catch (e) {
+      document.getElementById('syncTime').innerText = "Lỗi đẩy Cloud!";
+    }
+  }
+
+  async function syncFromCloud() {
+    if (isHostStation) return;
+    try {
+      const res = await fetch(`${FIREBASE_DB_URL}history.json`);
+      if (!res.ok) {
+        document.getElementById('syncTime').innerText = "Lỗi quyền Firebase (" + res.status + ")";
+        return;
+      }
+      const cloudList = await res.json();
+      if (Array.isArray(cloudList) && cloudList.length > 0) {
+        const latestSig = JSON.stringify(cloudList[0]);
+        if (latestSig !== lastCloudSignature) {
+          lastCloudSignature = latestSig;
+          historyData = cloudList;
+          const newest = historyData[0];
+          updateCurrentPerson(newest.person || "Khách vãng lai", true);
+          updateMainDisplay(parseFloat(newest.temp), newest.person);
+          renderTable();
+        }
+        document.getElementById('syncTime').innerText = "Đồng bộ lúc: " + new Date().toLocaleTimeString('vi-VN');
+      } else {
+        document.getElementById('syncTime').innerText = "Cloud sẵn sàng (0 bản ghi)";
+        renderTable();
+      }
+    } catch (e) {
+      document.getElementById('syncTime').innerText = "Mất kết nối Cloud";
+    }
+  }
+
+  function updateMainDisplay(temp, personName) {
+    const threshold = parseFloat(document.getElementById('feverThreshold').value) || 38.0;
+    const isFever = temp >= threshold;
+    const tempEl = document.getElementById('tempValue'), alertEl = document.getElementById('alertText');
+    tempEl.innerText = temp.toFixed(1) + " °C";
+    if (isFever) {
+      tempEl.style.color = "var(--fever)"; alertEl.style.color = "var(--fever)";
+      alertEl.innerText = "🚨 CẢNH BÁO: THÂN NHIỆT VƯỢT NGƯỠNG!";
+    } else {
+      tempEl.style.color = "var(--normal)"; alertEl.style.color = "var(--normal)";
+      alertEl.innerText = "✅ Thân nhiệt bình thường";
+    }
   }
 
   function renderTable() {
     const tbody = document.getElementById('historyBody');
-    if (historyData.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="color: #94a3b8; padding: 24px;">Chưa có dữ liệu đo nào được ghi nhận</td></tr>'; return; }
+    if (historyData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color: #94a3b8; padding: 24px;">Chưa có dữ liệu đo nào được ghi nhận</td></tr>';
+      return;
+    }
     tbody.innerHTML = historyData.map((item, index) => `
       <tr>
         <td>#${historyData.length - index}</td>
@@ -354,17 +398,28 @@
     `).join('');
   }
 
-  function clearHistory() { historyData = []; renderTable(); }
+  async function clearHistory() {
+    historyData = [];
+    renderTable();
+    try {
+      await fetch(`${FIREBASE_DB_URL}history.json`, { method: "DELETE" });
+      document.getElementById('syncTime').innerText = "Đã xóa nhật ký Cloud";
+    } catch (e) {}
+  }
 
   function exportCSV() {
     if (historyData.length === 0) return alert("Chưa có dữ liệu để xuất!");
     let csvContent = "\uFEFFSTT,Thoi gian,Sinh vien / Nguoi do,Nhiet do (C),Trang thai\n";
-    historyData.forEach((item, index) => { csvContent += `${historyData.length - index},${item.time},"${item.person}",${item.temp},${item.isFever ? "Sot cao" : "Binh thuong"}\n`; });
+    historyData.forEach((item, index) => {
+      csvContent += `${historyData.length - index},${item.time},"${item.person}",${item.temp},${item.isFever ? "Sot cao" : "Binh thuong"}\n`;
+    });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), link = document.createElement("a");
     link.href = URL.createObjectURL(blob); link.download = "Nhat_ky_do_than_nhiet.csv"; link.click();
   }
 
   loadPeopleList();
+  syncFromCloud();
+  setInterval(syncFromCloud, 1500);
 </script>
 </body>
 </html>
