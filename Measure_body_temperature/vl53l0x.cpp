@@ -4,10 +4,6 @@
 
 VL53L0X::VL53L0X(uint8_t i2cAddr) : _addr(i2cAddr), _stopVar(0) {}
 
-// ---------------------------------------------------------------------------
-// I2C helpers
-// ---------------------------------------------------------------------------
-
 void VL53L0X::writeReg(uint8_t reg, uint8_t val) {
     Wire.beginTransmission(_addr);
     Wire.write(reg);
@@ -41,10 +37,7 @@ uint16_t VL53L0X::readReg16(uint8_t reg) {
     return val;
 }
 
-// ---------------------------------------------------------------------------
 // ST VL53L0X mandatory tuning settings (from ST UM2039 / Pololu library).
-// Stored in Flash to save SRAM.  Each pair: {register, value}.
-// ---------------------------------------------------------------------------
 static const uint8_t TUNING[] PROGMEM = {
     0xFF,0x01, 0x00,0x00, 0xFF,0x00, 0x09,0x00,
     0x10,0x00, 0x11,0x00, 0x24,0x01, 0x25,0xFF,
@@ -76,24 +69,16 @@ void VL53L0X::loadTuningSettings() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// begin()
-// ---------------------------------------------------------------------------
 bool VL53L0X::begin() {
-    // Check device is on the bus
     Wire.beginTransmission(_addr);
     if (Wire.endTransmission() != 0) return false;
 
-    // Model ID register must read 0xEE
     if (readReg(0xC0) != 0xEE) return false;
 
-    // Use 2.8 V I/O mode (same default as the Pololu library)
     writeReg(0x89, readReg(0x89) | 0x01);
 
-    // Data init
     writeReg(0x88, 0x00);
 
-    // Save stop variable (needed before every single-shot measurement)
     writeReg(0x80, 0x01);
     writeReg(0xFF, 0x01);
     writeReg(0x00, 0x00);
@@ -102,31 +87,24 @@ bool VL53L0X::begin() {
     writeReg(0xFF, 0x00);
     writeReg(0x80, 0x00);
 
-    // Disable MSRC and pre-range signal rate limit checks
     writeReg(0x60, readReg(0x60) | 0x12);
 
-    // Set signal rate limit: 0.25 Mcps (9.7 fixed-point: 0.25 * 128 = 32)
     writeReg16(0x44, 32);
 
-    // Enable all sequence steps before SPAD setup (Pololu init order)
     writeReg(0x01, 0xFF);
 
     // Pick which reference SPADs (light-sensing cells) to use.
     // Without this the sensor ranges with garbage values / out-of-range.
     if (!setupReferenceSpads()) return false;
 
-    // Load mandatory tuning settings from Flash
     loadTuningSettings();
 
-    // Configure GPIO: assert on new sample ready (active LOW)
-    writeReg(0x0A, 0x04);                          // interrupt on new sample
-    writeReg(0x84, readReg(0x84) & ~0x10);         // active LOW polarity
-    writeReg(0x0B, 0x01);                           // clear interrupt flag
+    writeReg(0x0A, 0x04);
+    writeReg(0x84, readReg(0x84) & ~0x10);
+    writeReg(0x0B, 0x01);
 
-    // Default sequence: TCC, DSS, pre-range, final-range
     writeReg(0x01, 0xE8);
 
-    // Reference calibration (VHV, then phase) — required for valid ranges
     writeReg(0x01, 0x01);
     if (!singleRefCalibration(0x40)) return false;
     writeReg(0x01, 0x02);
@@ -136,12 +114,7 @@ bool VL53L0X::begin() {
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Reference SPAD setup (ported from Pololu VL53L0X library: getSpadInfo +
-// SPAD map section of init())
-// ---------------------------------------------------------------------------
 bool VL53L0X::setupReferenceSpads() {
-    // --- Read SPAD count/type stored in the sensor's NVM ---
     writeReg(0x80, 0x01);
     writeReg(0xFF, 0x01);
     writeReg(0x00, 0x00);
@@ -168,7 +141,6 @@ bool VL53L0X::setupReferenceSpads() {
     writeReg(0xFF, 0x00);
     writeReg(0x80, 0x00);
 
-    // --- Enable exactly spadCount reference SPADs ---
     uint8_t map[6];
     for (uint8_t i = 0; i < 6; i++) map[i] = readReg(0xB0 + i);
 
@@ -191,9 +163,6 @@ bool VL53L0X::setupReferenceSpads() {
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// One reference calibration pass (Pololu performSingleRefCalibration)
-// ---------------------------------------------------------------------------
 bool VL53L0X::singleRefCalibration(uint8_t vhvInitByte) {
     writeReg(0x00, 0x01 | vhvInitByte);
     unsigned long t = millis();
@@ -205,11 +174,7 @@ bool VL53L0X::singleRefCalibration(uint8_t vhvInitByte) {
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// readDistanceMm() — single-shot ranging, blocks ~33 ms (50 ms timeout)
-// ---------------------------------------------------------------------------
 bool VL53L0X::readDistanceMm(uint16_t &outMm) {
-    // Arm the single-shot measurement
     writeReg(0x80, 0x01);
     writeReg(0xFF, 0x01);
     writeReg(0x00, 0x00);
@@ -217,9 +182,8 @@ bool VL53L0X::readDistanceMm(uint16_t &outMm) {
     writeReg(0x00, 0x01);
     writeReg(0xFF, 0x00);
     writeReg(0x80, 0x00);
-    writeReg(0x00, 0x01);  // SYSRANGE_START: trigger single shot
+    writeReg(0x00, 0x01);
 
-    // Wait for the start bit to clear (measurement actually started)
     unsigned long t = millis();
     while (readReg(0x00) & 0x01) {
         if (millis() - t > 50) {
@@ -228,7 +192,6 @@ bool VL53L0X::readDistanceMm(uint16_t &outMm) {
         }
     }
 
-    // Poll RESULT_INTERRUPT_STATUS (0x13) until bits[2:0] != 0
     t = millis();
     while ((readReg(0x13) & 0x07) == 0) {
         if (millis() - t > 50) {
@@ -237,13 +200,10 @@ bool VL53L0X::readDistanceMm(uint16_t &outMm) {
         }
     }
 
-    // Read range: RESULT_RANGE_STATUS (0x14) + 10 bytes = 0x1E (high), 0x1F (low)
     uint16_t mm = readReg16(0x1E);
 
-    // Clear interrupt
     writeReg(0x0B, 0x01);
 
-    // Sensor reports 8190 mm for targets that are out of range
     if (mm >= 8190) {
         outMm = OUT_OF_RANGE;
         return false;

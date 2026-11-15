@@ -1,23 +1,16 @@
-// ============================================================
 // BLE DIAGNOSTIC SKETCH — Chẩn đoán lỗi E4
 // Nap sketch nay len Arduino, mo Serial Monitor (9600 baud)
 // va doc ket qua. KHONG can module BLE de chay sketch nay.
-// ============================================================
 #include <SoftwareSerial.h>
 
-#define PIN_BLE_RX  2   // D2 <- TX cua module BLE
-#define PIN_BLE_TX  3   // D3 -> RX cua module BLE
+#define PIN_BLE_RX  2
+#define PIN_BLE_TX  3
 
 SoftwareSerial bleSerial(PIN_BLE_RX, PIN_BLE_TX);
 
-// Danh sach baudrate can thu
 const uint32_t BAUD_LIST[] = {9600, 115200, 38400, 57600, 19200};
 const uint8_t  BAUD_COUNT  = 5;
 
-// -----------------------------------------------------------
-// Doc phan hoi trong timeoutMs, in ra Serial Monitor
-// Tra ve true neu tim thay "OK" trong chuoi nhan duoc
-// -----------------------------------------------------------
 bool waitAndPrint(uint32_t timeoutMs) {
     char buf[64];
     uint8_t n = 0;
@@ -41,7 +34,6 @@ bool waitAndPrint(uint32_t timeoutMs) {
         Serial.print(F("  << Nhan duoc ("));
         Serial.print(n);
         Serial.print(F(" bytes): ["));
-        // In dang hex de ro rang
         for (uint8_t i = 0; i < n; i++) {
             if (buf[i] >= 32 && buf[i] < 127) {
                 Serial.print(buf[i]);
@@ -58,9 +50,6 @@ bool waitAndPrint(uint32_t timeoutMs) {
     return foundOK;
 }
 
-// -----------------------------------------------------------
-// Thu 1 baudrate, gui AT va AT\r\n, kiem tra phan hoi
-// -----------------------------------------------------------
 bool tryBaud(uint32_t baud) {
     Serial.print(F("\n[Baudrate "));
     Serial.print(baud);
@@ -69,11 +58,9 @@ bool tryBaud(uint32_t baud) {
     bleSerial.begin(baud);
     delay(100);
 
-    // Flush boot noise
     while (bleSerial.available()) bleSerial.read();
     delay(50);
 
-    // --- Thu 1: AT (khong CRLF) ---
     Serial.println(F("  >> Gui: AT"));
     bleSerial.print("AT");
     bool ok1 = waitAndPrint(600);
@@ -82,11 +69,9 @@ bool tryBaud(uint32_t baud) {
         return true;
     }
 
-    // Flush
     delay(50);
     while (bleSerial.available()) bleSerial.read();
 
-    // --- Thu 2: AT\r\n ---
     Serial.println(F("  >> Gui: AT\\r\\n"));
     bleSerial.print("AT\r\n");
     bool ok2 = waitAndPrint(600);
@@ -98,9 +83,6 @@ bool tryBaud(uint32_t baud) {
     return false;
 }
 
-// -----------------------------------------------------------
-// Setup
-// -----------------------------------------------------------
 void setup() {
     Serial.begin(9600);
     while (!Serial) {}
@@ -112,12 +94,6 @@ void setup() {
     Serial.println(F("Chan: D3(TX Arduino) -> RX module BLE"));
     Serial.println(F("Dang kiem tra...\n"));
 
-    // --- Buoc 1: Kiem tra chan D2, D3 co ngan mach k ---
-    // Neu TX noi vao TX (sai), SoftwareSerial se doc chinh no
-    // Hien tai khong the kiem tra phan cung truc tiep qua code,
-    // nhung co the phat hien qua phan hoi bat thuong.
-
-    // --- Buoc 2: Thu tung baudrate ---
     bool found = false;
     uint32_t goodBaud = 0;
     for (uint8_t i = 0; i < BAUD_COUNT; i++) {
@@ -146,7 +122,6 @@ void setup() {
             Serial.println(F("      Neu co: ngat BLE tren phone roi reset Arduino."));
         }
 
-        // --- Thu AT+NOTI1 ---
         bleSerial.begin(goodBaud);
         delay(50);
         while (bleSerial.available()) bleSerial.read();
@@ -154,7 +129,6 @@ void setup() {
         bleSerial.print("AT+NOTI1\r\n");
         waitAndPrint(600);
 
-        // --- Lay thong tin module ---
         while (bleSerial.available()) bleSerial.read();
         Serial.println(F(">> Thu AT+NAME? (lay ten module)..."));
         bleSerial.print("AT+NAME?\r\n");
@@ -187,8 +161,6 @@ void setup() {
 }
 
 void loop() {
-    // Sau khi chan doan xong, in tiep bat ky byte nao module gui ra
-    // de quan sat hoat dong thuc te
     if (bleSerial.available()) {
         Serial.print(F("[BLE->Serial]: "));
         while (bleSerial.available()) {

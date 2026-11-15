@@ -20,4 +20,4 @@ namespace eeprom_store {
     void save(const CalibrationData &data);
 }
 
-#endif // EEPROM_STORE_H
+#endif

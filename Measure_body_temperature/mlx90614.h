@@ -11,7 +11,6 @@ class MLX90614 {
 public:
     explicit MLX90614(uint8_t i2cAddr);
 
-    // Probes the sensor (used by startup self-test).
     bool begin();
 
     // Reads object/ambient temperature in Celsius. Retries up to
@@ -27,4 +26,4 @@ private:
     static float rawToCelsius(uint16_t raw);
 };
 
-#endif // MLX90614_H
+#endif

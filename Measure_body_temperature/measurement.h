@@ -14,12 +14,10 @@ enum class ResultClass { SUSPECT, NORMAL, ALARM, ERROR };
 bool takeMeasurement(MLX90614 &sensor, float &outSkinC, float &outAmbientC,
                       MeasureStatus &outStatus);
 
-// Spec 5: skin -> estimated body temperature, using ambient and the
-// EEPROM-stored K1/K2 (see config.h for the formula).
 float compensate(float skinC, float ambientC, const CalibrationData &cal);
 
 // Spec 6.2 classification table. status != OK short-circuits to the
 // matching class without looking at bodyTempC.
 ResultClass classify(float bodyTempC, float threshold, MeasureStatus status);
 
-#endif // MEASUREMENT_H
+#endif

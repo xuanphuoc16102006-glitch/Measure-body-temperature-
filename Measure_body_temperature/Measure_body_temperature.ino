@@ -10,9 +10,6 @@
 #include "vl53l0x.h"
 #include "sanitizer.h"
 
-// ---------------------------------------------------------------------------
-// Hardware objects
-// ---------------------------------------------------------------------------
 static MLX90614  sensor(I2C_ADDR_MLX90614);
 static Indicators indicators;
 static BleProtocol ble;
@@ -20,9 +17,6 @@ static VL53L0X   tof(I2C_ADDR_VL53L0X);
 static Sanitizer  san;
 static CalibrationData cal;
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
 static volatile bool measureRequested = false;
 static unsigned long buttonPressStartMs = 0;
 static bool buttonWasDown  = false;
@@ -32,21 +26,16 @@ static unsigned long lastIdlePacketMs = 0;
 static float lastTemp    = 0;
 static float lastAmbient = 0;
 static bool  calMode     = false;
-static bool  envLocked   = false;  // ambient outside 16-35 C => measuring locked
+static bool  envLocked   = false;
 static bool  bleShown    = false;
 
-// --- VL53L0X face-detection state (auto-trigger temp measurement) ---
 static unsigned long lastFaceSampleMs  = 0;
 static uint8_t       faceSteadyCount   = 0;
 static unsigned long lastFaceTriggerMs = 0;
-static bool          tofAvailable      = false;  // set false if self-test E5
+static bool          tofAvailable      = false;
 
-// --- Sanitizer state tracking (for BLE notifications on state change) ---
 static SanitizerState lastSanState = SanitizerState::IDLE;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 static void showIdleScreen() {
     if (envLocked) {
         char t[10], small[17];
@@ -60,17 +49,12 @@ static void showIdleScreen() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Self-test
 //   E1 — MLX90614 not found   (fatal)
 //   E2 — OLED not found       (fatal)
 //   E3 — EEPROM CRC mismatch  (fatal, defaults saved)
 //   E4 — BLE không phản hồi  (non-fatal)
 //   E5 — VL53L0X not found    (non-fatal)
-// Nếu có BẤT KỲ lỗi nào: màn hình giữ nguyên mã lỗi, không tự chuyển.
-// Phải sửa phần cứng rồi nhấn RESET để chạy lại.
-// Nếu không có lỗi: hiện "SAN SANG" bình thường.
-// ---------------------------------------------------------------------------
 static void runSelfTestAndReport(bool oledOk) {
     char codes[24] = "";
 
@@ -89,16 +73,13 @@ static void runSelfTestAndReport(bool oledOk) {
     tofAvailable = !e5;
 
     if (!codes[0]) {
-        // Không lỗi → hiện SAN SANG
         showIdleScreen();
         return;
     }
 
-    // Có lỗi (bất kỳ) → hiện mã lỗi, giữ màn hình, chờ RESET
     indicators.showResult(ResultClass::ERROR, 0, cal.threshold, false, codes + 1);
 }
 
-// ---------------------------------------------------------------------------
 static void setCalMode(bool on) {
     calMode = on;
     showIdleScreen();
@@ -115,7 +96,6 @@ static void checkAmbient() {
     }
 }
 
-// Gửi kết quả đo lên app BLE dưới dạng chữ dễ đọc.
 static void sendResultToApp(ResultClass res, float bodyTemp) {
     char t[8], th[8], line[48];
     dtostrf(bodyTemp, 1, 1, t);
@@ -168,9 +148,6 @@ static void measureAndReport() {
     lastTemp = bodyTemp;
 }
 
-// ---------------------------------------------------------------------------
-// setup()
-// ---------------------------------------------------------------------------
 void setup() {
     MCUSR = 0;
     wdt_disable();
@@ -191,19 +168,14 @@ void setup() {
     wdt_enable(WDTO_2S);
 }
 
-// ---------------------------------------------------------------------------
-// loop()
-// ---------------------------------------------------------------------------
 void loop() {
     wdt_reset();
 
-    // --- Hard reset via RESET button (reruns self-test) ---
     if (digitalRead(PIN_BUTTON_RESET) == LOW) {
         wdt_enable(WDTO_15MS);
         for (;;) {}
     }
 
-    // --- FUNCTION button: short press = measure, hold 3 s = toggle cal mode ---
     bool buttonDown  = (digitalRead(PIN_BUTTON_FUNCTION) == LOW);
     unsigned long heldMs = millis() - buttonPressStartMs;
 
@@ -219,7 +191,6 @@ void loop() {
     }
     buttonWasDown = buttonDown;
 
-    // --- BLE ---
     ble.reprobe();
     bool wantCal = calMode;
     float oldThreshold = cal.threshold;
@@ -227,7 +198,6 @@ void loop() {
     if (wantCal != calMode) setCalMode(wantCal);
     else if (cal.threshold != oldThreshold) showIdleScreen();
 
-    // --- VL53L0X: tự động trigger đo nhiệt khi tay/trán lại gần ---
     if (tofAvailable && !calMode && !envLocked
         && millis() - lastFaceSampleMs >= FACE_SAMPLE_INTERVAL_MS) {
 
@@ -251,7 +221,6 @@ void loop() {
         }
     }
 
-    // --- Sanitizer subsystem ---
     san.tick();
     indicators.setSanitizerState(san.state());
 
@@ -263,7 +232,6 @@ void loop() {
         lastSanState = san.state();
     }
 
-    // --- Temperature measurement ---
     if (measureRequested) {
         measureRequested = false;
         if (envLocked) {
@@ -277,7 +245,6 @@ void loop() {
         lastIdlePacketMs = millis();
     }
 
-    // --- BLE connection icon refresh ---
     if (ble.connected() != bleShown) {
         bleShown = ble.connected();
         indicators.drawBle(bleShown);

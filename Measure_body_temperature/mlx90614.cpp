@@ -14,7 +14,7 @@ bool MLX90614::begin() {
 }
 
 bool MLX90614::readWord(uint8_t command, uint16_t &outRaw) {
-    for (uint8_t attempt = 0; attempt <= I2C_RETRY_MAX; attempt++) { // 1 read + up to 3 re-reads
+    for (uint8_t attempt = 0; attempt <= I2C_RETRY_MAX; attempt++) {
         Wire.beginTransmission(_addr);
         Wire.write(command);
         if (Wire.endTransmission(false) != 0) continue; // repeated start, no stop

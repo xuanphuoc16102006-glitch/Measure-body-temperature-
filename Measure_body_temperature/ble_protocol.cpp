@@ -8,10 +8,6 @@ void BleProtocol::begin() {
     _serial.begin(BLE_BAUD_RATE);
 }
 
-// Reads bytes for up to timeoutMs, returns true as soon as "OK" (case-insensitive)
-// is found anywhere in the stream. A sliding 2-byte window handles leading
-// \r, \n, or any boot noise the module emits before its real reply.
-// Any leftover bytes are flushed so they don't contaminate poll() later.
 bool BleProtocol::replyIsOk(uint16_t timeoutMs) {
     char w0 = 0, w1 = 0;
     unsigned long start = millis();
@@ -20,7 +16,6 @@ bool BleProtocol::replyIsOk(uint16_t timeoutMs) {
             w0 = w1;
             w1 = (char)_serial.read();
             if ((w0 == 'O' || w0 == 'o') && (w1 == 'K' || w1 == 'k')) {
-                // Found "OK" — flush any trailing bytes (\r\n) before returning
                 delay(10);
                 while (_serial.available()) _serial.read();
                 return true;
@@ -30,26 +25,15 @@ bool BleProtocol::replyIsOk(uint16_t timeoutMs) {
     return false;
 }
 
-// Probes the BLE module. Returns true if the module responds to AT commands.
-// BLE is a non-critical peripheral: if probe() returns false, the caller
-// (runSelfTestAndReport) shows a brief warning then continues normally —
-// temperature measurement works without BLE.
-//
 // IMPORTANT: If the phone is already connected when Arduino boots, the module
 // is in transparent mode and will NOT respond to AT. In that case probe()
 // returns false (E4) but the module is still working. reprobe() in loop()
 // will send AT+NOTI1 as soon as the phone disconnects and reconnects.
-//
-// Strategy: flush boot noise first, then try both "AT" (HM-10 genuine) and
-// "AT\r\n" (AT-09, CC41, BT05, JDY-08 clones) in rotation, up to
-// BLE_PROBE_RETRIES times each, with BLE_PROBE_TIMEOUT_MS per attempt.
 bool BleProtocol::probe() {
-    // Flush boot noise / leftover bytes from a previous reset
     delay(20);
     while (_serial.available()) _serial.read();
 
     for (uint8_t i = 0; i < BLE_PROBE_RETRIES; i++) {
-        // Alternate between bare "AT" and "AT\r\n" to cover all known module types
         if (i % 2 == 0) {
             _serial.print("AT");
         } else {
@@ -57,14 +41,12 @@ bool BleProtocol::probe() {
         }
 
         if (replyIsOk(BLE_PROBE_TIMEOUT_MS)) {
-            // Module alive — enable OK+CONN / OK+LOST notifications (best-effort)
             _serial.print("AT+NOTI1\r\n");
             replyIsOk(BLE_PROBE_TIMEOUT_MS);
             _notiEnabled = true;
             return true;
         }
 
-        // Brief pause before next attempt; flush noise that may have arrived
         delay(50);
         while (_serial.available()) _serial.read();
     }
@@ -72,27 +54,19 @@ bool BleProtocol::probe() {
     return false;
 }
 
-// Tries to send AT+NOTI1 if it was never successfully confirmed (e.g. because
-// the phone was connected at boot and probe() got E4). Called every loop()
-// iteration but only acts every BLE_REPROBE_INTERVAL_MS to avoid flooding.
-// Once _notiEnabled is true this function becomes a no-op.
 void BleProtocol::reprobe() {
-    if (_notiEnabled) return; // already set up — nothing to do
+    if (_notiEnabled) return;
 
     unsigned long now = millis();
     if (now - _lastReprobeMs < BLE_REPROBE_INTERVAL_MS) return;
     _lastReprobeMs = now;
 
-    // Only send AT+NOTI1 when no data is pending — if the module is in
-    // transparent mode the AT command would be forwarded to the phone as data.
-    // We detect "command mode" by checking that the serial line is idle.
-    if (_serial.available()) return; // data in buffer means module may be in transparent mode
+    if (_serial.available()) return;
 
     _serial.print("AT+NOTI1\r\n");
     if (replyIsOk(300)) {
         _notiEnabled = true;
     }
-    // Whether it worked or not, flush any reply so poll() stays clean
     delay(10);
     while (_serial.available()) _serial.read();
 }
@@ -148,9 +122,8 @@ void BleProtocol::poll(CalibrationData &cal, bool &calMode) {
         if (_len < BLE_CMD_MAX_LEN) {
             _buf[_len++] = c;
         } else {
-            _len = 0; // overflow: drop and resync on next line
+            _len = 0;
         }
-        // HM-10 connection notifications (enabled in probe()) have no CRLF.
         if (_len == 7 && strncmp(_buf, "OK+CONN", 7) == 0) {
             _connected = true;
             _len = 0;
@@ -169,7 +142,7 @@ void BleProtocol::poll(CalibrationData &cal, bool &calMode) {
 
 void BleProtocol::handleLine(CalibrationData &cal, bool &calMode) {
     _buf[_len] = '\0';
-    _connected = true; // a command can only come from a connected phone
+    _connected = true;
 
     if (strncmp(_buf, "SET_THRESH=", 11) == 0) {
         float v = atof(_buf + 11);
@@ -177,7 +150,7 @@ void BleProtocol::handleLine(CalibrationData &cal, bool &calMode) {
             _serial.print(F("Loi: nguong phai tu 35.0 den 40.0\r\n"));
             return;
         }
-        cal.threshold = round(v * 10) / 10.0f; // spec: 0.1 C steps
+        cal.threshold = round(v * 10) / 10.0f;
         eeprom_store::save(cal);
         char t[8];
         dtostrf(cal.threshold, 1, 1, t);
