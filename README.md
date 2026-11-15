@@ -113,7 +113,7 @@ Trước khi thực hiện phép đo, hệ thống cho phép quản lý và gán
 
 ```text
 Measure-body-temperature-/
-├── doan_da_sua/          # Mã nguồn firmware C/C++ (config.h, indicators.cpp, sanitizer.cpp, ...)
-├── index.html            # Giao diện Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến (BLE + QR + Cloud)
-└── README.md             # Tài liệu mô tả chức năng, sơ đồ chân và hướng dẫn vận hành
+├── Measure_body_temperature/   # Mã nguồn firmware C/C++ (Measure_body_temperature.ino, config.h, indicators.cpp, sanitizer.cpp, ...)
+├── index.html                  # Giao diện Hệ Thống Đo Và Giám Sát Thân Nhiệt Trực Tuyến (BLE + QR + Cloud)
+└── README.md                   # Tài liệu mô tả chức năng, sơ đồ chân và hướng dẫn vận hành
 ```
