@@ -1,4 +1,3 @@
-
 #include <SoftwareSerial.h>
 #define PIN_BLE_RX  2
 #define PIN_BLE_TX  3
