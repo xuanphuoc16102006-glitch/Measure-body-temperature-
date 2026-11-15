@@ -1,6 +1,4 @@
-// BLE DIAGNOSTIC SKETCH — Chẩn đoán lỗi E4
-// Nap sketch nay len Arduino, mo Serial Monitor (9600 baud)
-// va doc ket qua. KHONG can module BLE de chay sketch nay.
+
 #include <SoftwareSerial.h>
 
 #define PIN_BLE_RX  2
