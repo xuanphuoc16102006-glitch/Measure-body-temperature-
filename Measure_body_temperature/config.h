@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // BLE module dùng Serial phần cứng: D0 (RX) <- TXD module, D1 (TX) -> RXD module.
-// Khi nạp code qua USB phải rút tạm dây D0/D1 của module BLE ra.
+// Khi nạp code phải rút tạm dây D0/D1 của module BLE ra.
 #define PIN_BUTTON_FUNCTION   8
 #define PIN_BUTTON_RESET      9
 #define PIN_BUZZER            10
